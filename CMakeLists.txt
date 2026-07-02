@@ -45,6 +45,7 @@ endif()
 set(LIBC ShepherdingLibC)
 add_library(shepherding STATIC
   ${LIBC}/Agents.cpp
+  ${LIBC}/AdversarialBehaviors.cpp
   ${LIBC}/Behaviors.cpp
   ${LIBC}/Environment.cpp
   ${LIBC}/Flock.cpp
@@ -74,20 +75,27 @@ target_include_directories(tinyxml2 PUBLIC third_party/tinyxml2)
 #                then uncomment tinyxml2 above and in target_link_libraries below.
 # ----------------------------------------------------------------------------
 set(SIM ShepherdingSimC_V1)
-add_executable(shepherd_sim
+add_library(simcore STATIC
   ${SIM}/Sim.cpp
   ${SIM}/SupportingCalc.cpp
   ${SIM}/CLI.cpp
-  ${SIM}/main_headless.cpp
   ${SIM}/ConfigLoaderPortable.cpp
+  ${SIM}/AdversarialController.cpp
+  ${SIM}/Experiment.cpp
 )
-target_include_directories(shepherd_sim PRIVATE ${SIM} ${LIBC})
-target_link_libraries(shepherd_sim PRIVATE shepherding tinyxml2)
+target_include_directories(simcore PUBLIC ${SIM} ${LIBC})
+target_link_libraries(simcore PUBLIC shepherding tinyxml2)
+
+add_executable(shepherd_sim ${SIM}/main_headless.cpp)
+target_link_libraries(shepherd_sim PRIVATE simcore)
 
 # ----------------------------------------------------------------------------
-# 4) Tests (Milestone M4+; see REQUIREMENTS.md Section 6).
+# 4) Tests (REQUIREMENTS.md Section 6): unit tests U1-U8 and the T0 regression.
 # ----------------------------------------------------------------------------
-# enable_testing()
-# add_executable(unit_tests tests/unit_tests.cpp)
-# target_link_libraries(unit_tests PRIVATE shepherding)
-# add_test(NAME unit_tests COMMAND unit_tests)
+enable_testing()
+add_executable(unit_tests tests/unit_tests.cpp)
+target_link_libraries(unit_tests PRIVATE simcore)
+add_test(NAME unit_tests COMMAND unit_tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+add_test(NAME t0_regression
+         COMMAND bash ${CMAKE_SOURCE_DIR}/tests/t0_regression.sh
+                 $<TARGET_FILE_DIR:shepherd_sim> ${CMAKE_SOURCE_DIR})

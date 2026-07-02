@@ -14,6 +14,7 @@
 
 #include <vector>
 #include <list>
+#include <random>
 //#include "Flock.h"
 #include "Vector2.h"
 #include<string>
@@ -117,6 +118,21 @@ public:
 
 	bool openCoveringTask; // a flag to keep track of open covering tasks.
 	std::list<Vector2f> coveringPoints; // a keeper for the covering point to do if needed.
+
+	// Adversarial patrolling extension (Zhou, El-Fiqi, Hussein, IEEE SMC 2024).
+	// All fields carry in-class defaults that leave the base model untouched; they are
+	// only changed when the config enables AdversarialMode.
+	int AdversarialMode = 0;      // master switch for every adversarial feature
+	Vector2f AOI;                 // area of interest the attackers are drawn to
+	float W_pi_I = 0.25f;         // AOI attraction weight on the sheep force
+	float Intercept_dist = 5.0f;  // intercepting stand-off distance from the AOI
+	float Patrol_radius = 5.0f;   // patrol circle radius about the AOI
+	float Patrol_step = 0.3f;     // nominal patrol phase advance per step
+	float Patrol_noise = 0.1f;    // uniform jitter half-width on the patrol phase
+	// Dedicated RNG substreams so adversarial randomness never touches the base
+	// rand() stream and can be snapshot/restored around virtual look-ahead steps.
+	std::mt19937 advJitterRng;    // sheep jitter draws when AdversarialMode=1
+	std::mt19937 patrolRng;       // patrol phase noise
 
 	//Vector2f paddockLength;
 	//Vector2f paddockWidth;

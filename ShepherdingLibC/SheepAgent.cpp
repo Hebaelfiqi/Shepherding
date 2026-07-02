@@ -57,6 +57,10 @@ void SheepAgent::calculateSheepPositiont1()
 		{
 			thisBehaviorForce = (*behaviorIter)->GetForce();   //double check later if we want to store previous direction somewhere
 		}
+		else if ((*behaviorIter)->behaviorType == "AOIAttraction") //adversarial extension; only present when AdversarialMode=1
+		{
+			thisBehaviorForce = (*behaviorIter)->GetForce();
+		}
 
 
 		newForce = newForce + thisBehaviorForce * (*behaviorIter)->Weight;

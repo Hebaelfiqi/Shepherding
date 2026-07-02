@@ -13,6 +13,7 @@
 #include "CLI.h"
 #include "Environment.h"
 #include "ConfigLoaderPortable.h"
+#include "Experiment.h"
 
 static void WriteOutFilesHeadless(std::ofstream& outputHeader_file, std::ofstream& outputConfigfile)
 {
@@ -113,15 +114,40 @@ int main(int argc, char* argv[])
 {
 	std::string ConfigFile = "../InputFiles/config.xml"; //set the default configuration file name
 	std::string GraphicFile = "../InputFiles/VisualizationOptions.xml"; //set the default filename
-	if (argc > 1)
+	bool experimentMode = false;
+	for (int i = 1; i < argc; i++)
 	{
-		ConfigFile = argv[1]; //if a new configuration file name is given then update the ConfigFile name
+		if (std::string(argv[i]) == "--experiment")
+		{
+			experimentMode = true;
+		}
+		else
+		{
+			ConfigFile = argv[i]; //if a new configuration file name is given then update the ConfigFile name
+		}
 	}
 	for (int i = 1; i < argc; i++)
 		printf("Argument %d: %s\n", (i + 1), argv[i]);
 
 	loadConfigurationPortable(ConfigFile);
 	loadGraphicsPortable(GraphicFile); //visualisation-only values; loaded for parity, unused headless
+
+	if (experimentMode)
+	{
+		// 27-condition adversarial experiment (REQUIREMENTS.md Section 3.7). Requires
+		// AdversarialMode=1 in the config.
+		if (AdversarialMode != 1)
+		{
+			printf("--experiment requires AdversarialMode=1 in the config\n");
+			return 1;
+		}
+		return runExperiment("results");
+	}
+	if (AdversarialMode == 1)
+	{
+		// Single adversarial run with the config's own initialisation.
+		return runAdversarialSingle(std::string("./") + ConfigFile.substr(0, ConfigFile.length() - 4) + "_AdversarialPerStep.csv");
+	}
 
 	std::ofstream output_file(std::string("./") + ConfigFile.substr(0, ConfigFile.length() - 4) + std::string("_OutPutData.csv"));
 	std::ofstream outputHeader_file(std::string("./") + ConfigFile.substr(0, ConfigFile.length() - 4) + std::string("_OutPutDataHeader.csv"));

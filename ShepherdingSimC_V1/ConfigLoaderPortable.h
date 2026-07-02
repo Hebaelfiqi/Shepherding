@@ -69,6 +69,31 @@ extern bool CollisionAvoidanceStaticObstaclesForceON;
 extern bool JitteringForceON;
 extern bool scaleForceVisualization;
 
+// Adversarial extension keys (REQUIREMENTS.md Section 4). All optional; defaults leave
+// the base model bit-for-bit unchanged. Parsed from an optional <config
+// category="Adversarial"> section by element name, so configs without the section load
+// exactly as before.
+extern int AdversarialMode;        // master switch, default 0
+extern int AdversarialWeights;     // 1: apply the Section 3.2 sheep weights
+extern float AOI_x, AOI_y;         // default: centre of the top third of the field
+extern float W_pi_I;               // AOI attraction weight
+extern float Intercept_dist;
+extern float Patrol_radius;
+extern float Patrol_step;
+extern float Patrol_noise;
+extern int LookAheadController;    // 1: greedy BC selection, 0: fixed BC1
+extern float MetricWeight_M1, MetricWeight_M2, MetricWeight_M3;
+extern int Experiment_conditions;
+extern int Experiment_steps;
+extern int Experiment_base_seed;
+// Reconstructed 27-condition grid: 3 sheep-box anchors x 3 widths x 3 heights
+// (see docs/decisions.md). Space-separated triples in the config.
+extern float Experiment_startX[3];
+extern float Experiment_startY;
+extern float Experiment_boxW[3];
+extern float Experiment_boxH[3];
+extern float Experiment_dogX, Experiment_dogY, Experiment_dogRange;
+
 // Portable counterparts of loadDOMConfiguration / loadDOMGraphics. Return true on a
 // successful parse; on failure they print a message and leave the defaults in place
 // (mirroring the original, which continued with defaults after a COM parse error).

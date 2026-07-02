@@ -75,6 +75,26 @@ bool CollisionAvoidanceStaticObstaclesForceON = true;
 bool JitteringForceON = true;
 bool scaleForceVisualization = true;
 
+// Adversarial extension defaults (all off / neutral; REQUIREMENTS.md Section 4).
+int AdversarialMode = 0;
+int AdversarialWeights = 0;
+float AOI_x = -1, AOI_y = -1;      // -1: compute centre of top third of the field
+float W_pi_I = 0.25f;
+float Intercept_dist = 5.0f;
+float Patrol_radius = 5.0f;
+float Patrol_step = 0.3f;
+float Patrol_noise = 0.1f;
+int LookAheadController = 1;
+float MetricWeight_M1 = 1, MetricWeight_M2 = 1, MetricWeight_M3 = 1;
+int Experiment_conditions = 27;
+int Experiment_steps = 200;
+int Experiment_base_seed = 1000;
+float Experiment_startX[3] = { 2, 15, 28 };
+float Experiment_startY = 2;
+float Experiment_boxW[3] = { 10, 15, 20 };
+float Experiment_boxH[3] = { 10, 15, 20 };
+float Experiment_dogX = 22.5f, Experiment_dogY = 34, Experiment_dogRange = 5;
+
 namespace {
 
 using tinyxml2::XMLDocument;
@@ -229,6 +249,51 @@ bool loadConfigurationPortable(const std::string& filename)
 	cfg = selectConfig(doc, 11);
 	obstaclesDensity = toFloat(text(item(cfg, 0)));
 	obstaclesRadius = toFloat(text(item(cfg, 1)));
+
+	//Reading the optional Adversarial section (by category attribute and element name,
+	//so configs without it parse exactly as before).
+	for (const XMLElement* e = doc.RootElement()->FirstChildElement("config"); e; e = e->NextSiblingElement("config"))
+	{
+		const char* cat = e->Attribute("category");
+		if (!cat || std::string(cat) != "Adversarial") continue;
+		for (const XMLElement* c = e->FirstChildElement(); c; c = c->NextSiblingElement())
+		{
+			std::string k = c->Name();
+			std::string v = text(c);
+			if (k == "AdversarialMode") AdversarialMode = toInt(v);
+			else if (k == "AdversarialWeights") AdversarialWeights = toInt(v);
+			else if (k == "AOI_x") AOI_x = toFloat(v);
+			else if (k == "AOI_y") AOI_y = toFloat(v);
+			else if (k == "W_pi_I") W_pi_I = toFloat(v);
+			else if (k == "Intercept_dist") Intercept_dist = toFloat(v);
+			else if (k == "Patrol_radius") Patrol_radius = toFloat(v);
+			else if (k == "Patrol_step") Patrol_step = toFloat(v);
+			else if (k == "Patrol_noise") Patrol_noise = toFloat(v);
+			else if (k == "LookAheadController") LookAheadController = toInt(v);
+			else if (k == "MetricWeight_M1") MetricWeight_M1 = toFloat(v);
+			else if (k == "MetricWeight_M2") MetricWeight_M2 = toFloat(v);
+			else if (k == "MetricWeight_M3") MetricWeight_M3 = toFloat(v);
+			else if (k == "Experiment_conditions") Experiment_conditions = toInt(v);
+			else if (k == "Experiment_steps") Experiment_steps = toInt(v);
+			else if (k == "Experiment_base_seed") Experiment_base_seed = toInt(v);
+			else if (k == "Experiment_startY") Experiment_startY = toFloat(v);
+			else if (k == "Experiment_dogX") Experiment_dogX = toFloat(v);
+			else if (k == "Experiment_dogY") Experiment_dogY = toFloat(v);
+			else if (k == "Experiment_dogRange") Experiment_dogRange = toFloat(v);
+			else if (k == "Experiment_startX" || k == "Experiment_boxW" || k == "Experiment_boxH")
+			{
+				float* dst = (k == "Experiment_startX") ? Experiment_startX
+					: (k == "Experiment_boxW") ? Experiment_boxW : Experiment_boxH;
+				char* p = nullptr;
+				const char* s = v.c_str();
+				for (int i = 0; i < 3; i++) { dst[i] = std::strtof(s, &p); s = p; }
+			}
+		}
+		printf("Adversarial section loaded: AdversarialMode=%d AdversarialWeights=%d LookAhead=%d\n",
+			AdversarialMode, AdversarialWeights, LookAheadController);
+	}
+	if (AOI_x < 0) AOI_x = FieldLength / 2.0f;          // centre of the top third
+	if (AOI_y < 0) AOI_y = FieldLength * 5.0f / 6.0f;
 
 	printf("Random Numbers Speed: %d\n", randomNumberSeed);
 	printf("Visualisation : %s\n", visualizationON ? "true" : "false");

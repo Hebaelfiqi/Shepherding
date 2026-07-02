@@ -124,4 +124,10 @@
 		<Radius> 1 </Radius>
 <!-- The size of the radius (per unit) of a single obstacle -->
 	</config>
+<config category="Adversarial">
+<!-- Adversarial patrolling extension (Zhou, El-Fiqi, Hussein, IEEE SMC 2024). All keys
+     optional; with AdversarialMode=0 the library reproduces its original behaviour bit
+     for bit. See InputFiles/Config_Adversarial.xml for the experiment configuration. -->
+<AdversarialMode>0</AdversarialMode>
+</config>
 </ConfigurationFile>

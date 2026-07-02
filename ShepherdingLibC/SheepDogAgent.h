@@ -34,11 +34,19 @@ private:
 	float S_t_beta_j;		//!< Speed of agent \f$\beta\f$ at time \f$t\f$
 
 	//std::vector<DetectedSheepRow> DetectedSheep;
-	void UpdateDetectedSheepList();
-	void UpdateSheepDogAgentLCM();
 
 
 public:
+	// Made public for the adversarial controller, which performs the same sensing
+	// update as calculateSheepDogPositiont1 before computing behaviour forces.
+	// Visibility change only; bodies unchanged.
+	void UpdateDetectedSheepList();
+	void UpdateSheepDogAgentLCM();
+
+	// Adversarial extension: patrol phase phi (REQUIREMENTS.md A.4). Unused unless
+	// AdversarialMode=1.
+	float patrolPhi = 0;
+
 	/// <summary>
 	/// This function estimate the next location of the SheepDogAgent based on its current location, current forces, and current agent speed. It update the SheepDogAgent position_t attribute based on this estimation.
 	/// </summary>

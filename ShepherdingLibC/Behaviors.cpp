@@ -237,8 +237,20 @@ Vector2f Jittering::GetForce()
 
 	Vector2f jittering_force = Vector2f();
 
-	jittering_force.x = (float)((rand() / double(RAND_MAX) * 2 - 1)* (float)env.eta);
-	jittering_force.y = (float)((rand() / double(RAND_MAX) * 2 - 1)* (float)env.eta);
+	if (env.AdversarialMode == 1)
+	{
+		// Adversarial extension: draw from a dedicated mt19937 substream instead of the
+		// global rand() stream, so virtual look-ahead steps can snapshot and restore it
+		// (rand() state cannot be saved). With AdversarialMode=0 the original path runs.
+		std::uniform_real_distribution<double> dist(-1.0, 1.0);
+		jittering_force.x = (float)(dist(env.advJitterRng) * (float)env.eta);
+		jittering_force.y = (float)(dist(env.advJitterRng) * (float)env.eta);
+	}
+	else
+	{
+		jittering_force.x = (float)((rand() / double(RAND_MAX) * 2 - 1)* (float)env.eta);
+		jittering_force.y = (float)((rand() / double(RAND_MAX) * 2 - 1)* (float)env.eta);
+	}
 
 	return jittering_force;
 

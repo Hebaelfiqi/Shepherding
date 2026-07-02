@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Adversarial patrolling configuration (Zhou, El-Fiqi, Hussein, IEEE SMC 2024).
+     Base physics identical to Config.xml (regulated "our model" variant); N=10
+     attackers per the paper; adversarial section enabled. Run:
+       ./build/shepherd_sim InputFiles/Config_Adversarial.xml                (single run)
+       ./build/shepherd_sim - -experiment InputFiles/Config_Adversarial.xml (27x200)   -->
+<ConfigurationFile>
+<config category="Reproducibility">
+<RandomSeed>0 </RandomSeed>
+</config>
+  <config category="Visualisation">
+    <Visualisation>0</Visualisation>
+  </config>
+<config category="Field Configurations">
+<FieldWidth>50</FieldWidth>
+<WindowMarginSize>10</WindowMarginSize>
+</config>
+<config category="Goal Location relevant to the field">
+<!-- Unused in adversarial mode: the driving goal is recomputed every step to herd the
+     swarm away from the AOI, and goal-based termination is bypassed. -->
+<x>25</x>
+<y>50</y>
+</config>
+<config category="Paddock Dimension">
+<PaddockON> 0 </PaddockON>
+<GoalRadius> 10 </GoalRadius>
+<Length>30</Length>
+<Width>30</Width>
+</config>
+<config category="Shepherding Model Configuration">
+<DrivingPositionEq> 1 </DrivingPositionEq>
+<CollectingPositionEq>1</CollectingPositionEq>
+<fNequation>1</fNequation>
+<StallingON>0</StallingON>
+<StallingDistance>6</StallingDistance>
+<CircularPathPlanningON>0</CircularPathPlanningON>
+<!-- The adversarial driver steps the dog from the blended behaviour force directly and
+     does not apply the circular path-planning correction (docs/decisions.md). -->
+<SheepNeignborhoodSelection>1</SheepNeignborhoodSelection>
+<R3>10</R3>
+<R2>4</R2>
+<ForceRegulated>1</ForceRegulated>
+<!-- Load-bearing: the bounded standoff depends on the exponentially decaying repulsion. -->
+<ModulationDecayFactor>2</ModulationDecayFactor>
+</config>
+<config category="Shepherding Parameters">
+<N> 10</N>
+<!-- N=10 attackers per the paper (REQUIREMENTS.md Appendix A notation). -->
+<M> 1 </M>
+<R_pi_beta> 65</R_pi_beta>
+<Ra_pi_pi> 0.4</Ra_pi_pi>
+<Rs_pi_pi> 3</Rs_pi_pi>
+<card_Omega_pi_pi> 9 </card_Omega_pi_pi>
+<card_Omega_beta_pi>  10 </card_Omega_beta_pi>
+<W_pi_pi> 2</W_pi_pi>
+<W_pi_beta> 2</W_pi_beta>
+<W_pi_Lambda> 1.0</W_pi_Lambda>
+<W_pi_upsilon> 0.5 </W_pi_upsilon>
+<W_e_pi_i> 0.0</W_e_pi_i>
+<W_e_beta_j> 0.3</W_e_beta_j>
+<S_t_beta_j> 2.0</S_t_beta_j>
+<eta>   0.05</eta>
+<R_beta_beta> 2</R_beta_beta>
+<R_beta_pi> 20</R_beta_pi>
+<W_beta_beta> 0.5</W_beta_beta>
+</config>
+<config category="Sheep Initialization">
+<!-- Single-run defaults; the - -experiment mode overrides the box per condition. -->
+<SheepInitializationStartingX>15</SheepInitializationStartingX>
+<SheepInitializationStartingY>2</SheepInitializationStartingY>
+<SheepInitializationXRange>15</SheepInitializationXRange>
+<SheepInitializationYRange>15</SheepInitializationYRange>
+<SheepInitializationPattern>P6</SheepInitializationPattern>
+</config>
+<config category="SheepDog Initialization">
+<!-- 5x5 square next to (below) the AOI at (25, 41.667); overridden by Experiment_dog*. -->
+<SheepDogInitializationStartingX>23</SheepDogInitializationStartingX>
+<SheepDogInitializationStartingY>34</SheepDogInitializationStartingY>
+<SheepDogInitializationXRange>5</SheepDogInitializationXRange>
+<SheepDogInitializationYRange>5</SheepDogInitializationYRange>
+</config>
+<config category="Maximum Number of Steps">
+<maximumSteps>200</maximumSteps>
+</config>
+<config category="obstacle">
+<Density>0.0</Density>
+<Radius> 1 </Radius>
+</config>
+<config category="Adversarial">
+<AdversarialMode>1</AdversarialMode>
+<AdversarialWeights>1</AdversarialWeights>
+<!-- Section 3.2 sheep weights: W_pi_upsilon=0.5, W_pi_Lambda=1.0, W_pi_beta=2.0,
+     W_pi_pi=2.0, W_e_pi=0.0, W_pi_I=0.25 -->
+<AOI_x>25</AOI_x>
+<AOI_y>41.667</AOI_y>
+<!-- Centre of the top third of the 50x50 field. -->
+<W_pi_I>0.25</W_pi_I>
+<Intercept_dist>5</Intercept_dist>
+<Patrol_radius>5</Patrol_radius>
+<Patrol_step>0.3</Patrol_step>
+<Patrol_noise>0.1</Patrol_noise>
+<LookAheadController>1</LookAheadController>
+<MetricWeight_M1>1</MetricWeight_M1>
+<MetricWeight_M2>1</MetricWeight_M2>
+<MetricWeight_M3>1</MetricWeight_M3>
+<Experiment_conditions>27</Experiment_conditions>
+<Experiment_steps>200</Experiment_steps>
+<Experiment_base_seed>1000</Experiment_base_seed>
+<!-- Reconstructed 27 conditions (docs/decisions.md): 3 attacker-box anchors x 3 widths
+     x 3 heights, boxes anchored low in the field (far from the AOI), Pattern P6. -->
+<Experiment_startX>2 15 28</Experiment_startX>
+<Experiment_startY>2</Experiment_startY>
+<Experiment_boxW>10 15 20</Experiment_boxW>
+<Experiment_boxH>10 15 20</Experiment_boxH>
+<Experiment_dogX>23</Experiment_dogX>
+<Experiment_dogY>34</Experiment_dogY>
+<Experiment_dogRange>5</Experiment_dogRange>
+</config>
+</ConfigurationFile>

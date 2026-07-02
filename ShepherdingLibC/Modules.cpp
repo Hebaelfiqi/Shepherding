@@ -1,6 +1,7 @@
 #include "Modules.h"
 #include "Agents.h"
 #include "Environment.h"
+#include "AdversarialBehaviors.h"
 #include <algorithm>
 #include <cmath>
 
@@ -15,6 +16,11 @@ void UpdateSheepBehaviors(SheepAgent* sheep, int timestep)
 	sheep->agentBehaviors.push_back(new CollisionAvoidanceOpponents(sheep));
 	sheep->agentBehaviors.push_back(new CollisionAvoidanceStaticObstacles(sheep));
 	sheep->agentBehaviors.push_back(new FollowingPreviousDirectionBehavior(sheep));
+
+	if (Environment::getInstance().AdversarialMode == 1)
+	{
+		sheep->agentBehaviors.push_back(new AOIAttraction(sheep));
+	}
 }
 
 void UpdateSheepDogBehaviors(SheepDogAgent* sheepDog, int timestep, int mode)
