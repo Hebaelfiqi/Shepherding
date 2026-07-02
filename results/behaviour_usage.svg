@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="360" font-family="sans-serif" font-size="12">
+<rect width="560" height="360" fill="white"/>
+<text x="280.0" y="20" text-anchor="middle" font-size="15">Behaviour usage (weighted share of chosen BCs)</text>
+<line x1="60" y1="300.0" x2="540" y2="300.0" stroke="#ddd"/>
+<text x="54" y="304.0" text-anchor="end">0%</text>
+<line x1="60" y1="235.0" x2="540" y2="235.0" stroke="#ddd"/>
+<text x="54" y="239.0" text-anchor="end">10%</text>
+<line x1="60" y1="170.0" x2="540" y2="170.0" stroke="#ddd"/>
+<text x="54" y="174.0" text-anchor="end">21%</text>
+<line x1="60" y1="105.0" x2="540" y2="105.0" stroke="#ddd"/>
+<text x="54" y="109.0" text-anchor="end">31%</text>
+<line x1="60" y1="40.0" x2="540" y2="40.0" stroke="#ddd"/>
+<text x="54" y="44.0" text-anchor="end">42%</text>
+<rect x="84.0" y="73.91304347826087" width="72.0" height="226.08695652173913" fill="#4477aa"/>
+<text x="120.0" y="68.91304347826087" text-anchor="middle">36.2%</text>
+<text x="120.0" y="318" text-anchor="middle">Driving</text>
+<rect x="204.0" y="112.05752445108945" width="72.0" height="187.94247554891055" fill="#4477aa"/>
+<text x="240.0" y="107.05752445108945" text-anchor="middle">30.1%</text>
+<text x="240.0" y="318" text-anchor="middle">Collecting</text>
+<rect x="324.0" y="179.72164161098948" width="72.0" height="120.2783583890105" fill="#4477aa"/>
+<text x="360.0" y="174.72164161098948" text-anchor="middle">19.2%</text>
+<text x="360.0" y="318" text-anchor="middle">Intercepting</text>
+<rect x="444.0" y="209.18314120568033" width="72.0" height="90.81685879431969" fill="#4477aa"/>
+<text x="480.0" y="204.18314120568033" text-anchor="middle">14.5%</text>
+<text x="480.0" y="318" text-anchor="middle">Patrolling</text>
+<line x1="60" y1="40" x2="60" y2="300" stroke="black"/>
+<line x1="60" y1="300" x2="540" y2="300" stroke="black"/>
+</svg>
