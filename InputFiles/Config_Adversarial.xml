@@ -48,8 +48,8 @@
 <!-- N=10 attackers per the paper (REQUIREMENTS.md Appendix A notation). -->
 <M> 1 </M>
 <R_pi_beta> 65</R_pi_beta>
-<Ra_pi_pi> 0.4</Ra_pi_pi>
-<Rs_pi_pi> 3</Rs_pi_pi>
+<Ra_pi_pi> 2</Ra_pi_pi>
+<Rs_pi_pi> 20</Rs_pi_pi>
 <card_Omega_pi_pi> 9 </card_Omega_pi_pi>
 <card_Omega_beta_pi>  10 </card_Omega_beta_pi>
 <W_pi_pi> 2</W_pi_pi>
@@ -95,13 +95,13 @@
 <AOI_y>41.667</AOI_y>
 <!-- Centre of the top third of the 50x50 field. -->
 <W_pi_I>0.25</W_pi_I>
-<Intercept_dist>5</Intercept_dist>
-<Patrol_radius>5</Patrol_radius>
+<Intercept_dist>0.5</Intercept_dist>
+<Patrol_radius>0.5</Patrol_radius>
 <Patrol_step>0.3</Patrol_step>
 <Patrol_noise>0.1</Patrol_noise>
 <LookAheadController>1</LookAheadController>
-<MetricWeight_M1>1</MetricWeight_M1>
-<MetricWeight_M2>1</MetricWeight_M2>
+<MetricWeight_M1>0</MetricWeight_M1>
+<MetricWeight_M2>3</MetricWeight_M2>
 <MetricWeight_M3>1</MetricWeight_M3>
 <Experiment_conditions>27</Experiment_conditions>
 <Experiment_steps>200</Experiment_steps>
