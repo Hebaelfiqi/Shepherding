@@ -278,11 +278,11 @@ SheepDogFlock::SheepDogFlock(std::mt19937 generator,int numSheepDogsList, float 
 			row.RefDogID = row.dogID - 2;//RefDogID = DogID-2 for all dogid>2
 			//row.dogID = thisSheepDogID;
 			//row.furthestSheepID = -1;
-			if (std::fmodf(row.dogID, 2) == 0)//Direction from the RefDogID is IF(Mod(DogID,2) == 0, "L", "R")	 for all dogid >1
+			if (fmodf(row.dogID, 2) == 0)//Direction from the RefDogID is IF(Mod(DogID,2) == 0, "L", "R")	 for all dogid >1
 			{
 				row.dogLocationRelevant2RefDog = "L";
 			}
-			else if (std::fmodf(row.dogID, 2) == 1) 
+			else if (fmodf(row.dogID, 2) == 1) 
 			{
 
 				row.dogLocationRelevant2RefDog = "R" ;
@@ -421,11 +421,11 @@ void SheepDogFlock::CalcNewLoc()
 
 				row.RefDogID = row.dogID - 2;//RefDogID = DogID-2 for all dogid>2
 
-				if (std::fmodf(row.dogID, 2) == 0)//Direction from the RefDogID is IF(Mod(DogID,2) == 0, "L", "R")	 for all dogid >1
+				if (fmodf(row.dogID, 2) == 0)//Direction from the RefDogID is IF(Mod(DogID,2) == 0, "L", "R")	 for all dogid >1
 				{
 					row.dogLocationRelevant2RefDog = "L";
 				}
-				else if (std::fmodf(row.dogID, 2) == 1)
+				else if (fmodf(row.dogID, 2) == 1)
 				{
 
 					row.dogLocationRelevant2RefDog = "R";
