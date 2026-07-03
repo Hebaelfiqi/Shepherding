@@ -80,18 +80,25 @@
       <div class="controls">
         <button id="run" class="primary">Run</button>
         <button id="pause" hidden>Pause</button>
-        <span class="ctl-label" id="spdLab">speed</span>
+        <button id="stepBtn" title="advance one timestep (pauses first)">Step</button>
+        <button id="restart" title="apply current settings and start again from timestep 0">Restart</button>
+        <span class="ctl-label" id="spdLab">steps/s</span>
         <select id="speed" aria-labelledby="spdLab">
-          <option value="1">1 step/frame</option>
-          <option value="2" selected>2 steps/frame</option>
-          <option value="5">5 steps/frame</option>
-          <option value="20">20 steps/frame</option>
+          <option value="1">1</option>
+          <option value="3">3</option>
+          <option value="10">10</option>
+          <option value="30" selected>30</option>
+          <option value="60">60</option>
+          <option value="120">120</option>
+          <option value="300">300</option>
         </select>
         <button id="trails" aria-pressed="true">Trails: on</button>
         <button id="csv" disabled>Download CSV</button>
         <span class="step" id="stepLabel">ready</span>
       </div>
-      <p class="note">Space runs and pauses. Every run is seeded and exactly repeatable; change
+      <p class="note">Space runs and pauses; Step advances one timestep at a time. Settings can
+      be changed at any moment, including mid-run: the Run button becomes "Apply &amp; Run", or
+      press Restart to start over with them. Every run is seeded and exactly repeatable; change
       the seed for a different episode. The dashed circle is the goal region: the task completes
       when every sheep is inside it.</p>
     </div>
@@ -210,6 +217,7 @@ function buildPatternCards() {
     const pick = () => {
       document.querySelectorAll('.pat').forEach(p => p.dataset.active = '0');
       card.dataset.active = '1';
+      markDirty();
     };
     card.addEventListener('click', pick);
     card.addEventListener('keydown', e => {
@@ -239,8 +247,8 @@ function setModel(m) {
     ? 'Regulated forces, distance-based neighbourhood, circular path planning: the model proposed in the paper.'
     : 'Strömbom et al. (2014) baseline: unregulated forces, nearest-n neighbourhood (n = 0.5 N), stalling; the comparison model of Fig. 5.';
 }
-$('mProposed').onclick = () => setModel('proposed');
-$('mStrombom').onclick = () => setModel('strombom');
+$('mProposed').onclick = () => { setModel('proposed'); markDirty(); };
+$('mStrombom').onclick = () => { setModel('strombom'); markDirty(); };
 
 function createSim() {
   const strombom = model === 'strombom';
@@ -365,28 +373,48 @@ function drawChart() {
   $('chartStat').textContent = 'distance now: ' + series[series.length - 1].toFixed(1) + ' u';
 }
 
-function frameLoop() {
-  if (running && !finished) {
-    const perFrame = parseInt($('speed').value);
-    for (let i = 0; i < perFrame; i++) {
-      const alive = mod._sim_step();
-      record();
-      if (!alive) {
-        finished = true; running = false;
-        $('run').hidden = false; $('pause').hidden = true;
-        $('csv').disabled = false;
-        const ok = mod._sim_goal_found();
-        $('bannerMsg').textContent = ok
-          ? 'Task complete: all ' + nSheep + ' sheep herded to the goal in ' + mod._sim_time() + ' steps'
-          : 'Not completed within ' + mod._sim_time() + ' steps (paper caps at 2000)';
-        $('bannerMsg').style.color = ok ? css('--goal') : css('--warn');
-        $('banner').hidden = false;
-        break;
-      }
-    }
-    draw();
+function finishRun() {
+  finished = true; running = false;
+  $('run').hidden = false; $('pause').hidden = true;
+  $('run').textContent = 'Run again';
+  $('csv').disabled = false;
+  const ok = mod._sim_goal_found();
+  $('bannerMsg').textContent = ok
+    ? 'Task complete: all ' + nSheep + ' sheep herded to the goal in ' + mod._sim_time() + ' steps'
+    : 'Not completed within ' + mod._sim_time() + ' steps (paper caps at 2000)';
+  $('bannerMsg').style.color = ok ? css('--goal') : css('--warn');
+  $('banner').hidden = false;
+}
+
+function advance(steps) {
+  for (let i = 0; i < steps; i++) {
+    const alive = mod._sim_step();
+    record();
+    if (!alive) { finishRun(); break; }
   }
-  lastTick = performance.now();
+}
+
+// Time-based clock: the speed control is timesteps per second of wall time, so very
+// slow inspection speeds (1 step/s) are available. acc carries fractional steps
+// between frames; the elapsed time is clamped so a throttled background tab does not
+// burst hundreds of steps on return.
+let acc = 0, lastFrameT = 0;
+function frameLoop() {
+  const now = performance.now();
+  const dt = Math.min(now - (lastFrameT || now), 400);
+  lastFrameT = now;
+  if (running && !finished) {
+    acc += dt * parseFloat($('speed').value) / 1000;
+    const steps = Math.min(Math.floor(acc), 400);
+    acc -= Math.floor(acc);
+    if (steps > 0) {
+      advance(steps);
+      draw();
+    }
+  } else {
+    acc = 0;
+  }
+  lastTick = now;
   scheduleRaf();
 }
 
@@ -404,20 +432,50 @@ setInterval(() => {
   if (performance.now() - lastTick > 300) frameLoop();
 }, 250);
 
-$('run').onclick = () => {
+// Any setting change, at any moment including mid-run, arms the Run button as
+// "Apply & Run"; Restart always applies current settings and starts from step 0.
+let settingsDirty = false;
+function markDirty() {
+  settingsDirty = true;
+  $('run').textContent = 'Apply & Run';
+  if (running) { $('run').hidden = false; $('pause').hidden = true; running = false; }
+}
+function armDirtyTracking() {
+  document.querySelectorAll('#paramGrid input, #pN, #pM, #pSeed, #pMax')
+    .forEach(el => el.addEventListener('change', markDirty));
+}
+
+function startRun(forceNew) {
   if (!mod) return;
-  if (finished || history.length === 0) createSim();
+  if (forceNew || settingsDirty || finished || history.length === 0) {
+    createSim();
+    settingsDirty = false;
+  }
   running = true;
   $('run').hidden = true; $('pause').hidden = false;
-};
+  $('run').textContent = 'Resume';
+}
+
+$('run').onclick = () => startRun(false);
+$('restart').onclick = () => startRun(true);
 $('pause').onclick = () => {
   running = false;
   $('run').hidden = false; $('pause').hidden = true;
-  $('run').textContent = 'Resume';
+  $('run').textContent = settingsDirty ? 'Apply & Run' : 'Resume';
 };
-['pN','pM','pSeed','pMax'].forEach(id => $(id).addEventListener('change', () => {
-  finished = false; history = []; $('run').textContent = 'Run';
-}));
+$('stepBtn').onclick = () => {
+  if (!mod) return;
+  if (settingsDirty || finished || history.length === 0) {
+    createSim();
+    settingsDirty = false;
+    $('run').textContent = 'Resume';
+    return;                       // first press shows the fresh formation at t=0
+  }
+  running = false;
+  $('run').hidden = false; $('pause').hidden = true;
+  advance(1);
+  draw();
+};
 $('trails').onclick = e => {
   trails = !trails;
   e.target.setAttribute('aria-pressed', trails);
@@ -446,6 +504,7 @@ document.addEventListener('keydown', e => {
 
 buildPatternCards();
 buildParamGrid();
+armDirtyTracking();
 setModel('proposed');
 createShepherdModule().then(m => {
   mod = m;
