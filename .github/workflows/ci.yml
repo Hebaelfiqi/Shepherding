@@ -1,0 +1,20 @@
+name: build-and-test
+
+on:
+  push:
+    branches: ["master", "m0.5-headless-port"]
+  pull_request:
+
+jobs:
+  linux-headless:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build -j
+      - name: Unit tests U1-U8 and T0 baseline regression
+        run: ctest --test-dir build --output-on-failure
+      - name: Smoke-run the 27x200 experiment
+        run: ./build/shepherd_sim --experiment InputFiles/Config_Adversarial.xml
