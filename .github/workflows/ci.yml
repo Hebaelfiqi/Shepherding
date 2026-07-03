@@ -2,7 +2,7 @@ name: build-and-test
 
 on:
   push:
-    branches: ["master", "m0.5-headless-port"]
+    branches: ["master", "adversarial-patrolling"]
   pull_request:
 
 jobs:
