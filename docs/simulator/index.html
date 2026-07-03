@@ -188,28 +188,30 @@ const PATTERNS = {
   5:{cells:[2,10,14,20,24], name:"P5"}, 6:{cells:[0,4,20,24], name:"P6"},
 };
 // Table 2 of the paper == InputFiles/Config.xml, exposed with the paper's notation:
-// [config name, default, symbol (HTML), Table 2 description]. Sheep are pi, the
-// sheepdog is beta, Lambda is the local centre of mass.
+// [config name, default, symbol (HTML), Table 2 description]. In the paper's notation,
+// pi (π) is the sheep agent, beta (β) is the sheepdog agent, and Lambda is the
+// local centre of mass of a sheep's neighbours. Descriptions spell this out rather than
+// repeating the bare Greek letters.
 const PARAM_DEFS = [
-  ["R_pi_beta", 65, "R<sub>&pi;&beta;</sub>", "pi sensing range for beta"],
-  ["Ra_pi_pi", 0.4, "R<sup>a</sup><sub>&pi;&pi;</sub>", "pi avoidance range for pi"],
-  ["Rs_pi_pi", 3, "R<sup>s</sup><sub>&pi;&pi;</sub>", "pi sensing range for pi"],
-  ["R_beta_beta", 2, "R<sub>&beta;&beta;</sub>", "beta avoidance range for beta"],
-  ["R_beta_pi", 65, "R<sub>&beta;&pi;</sub>", "beta sensing range for pi (post-paper library addition; 65 = paper-era unlimited)"],
-  ["W_pi_pi", 2, "W<sub>&pi;&pi;</sub>", "pi repulsion strength from pi"],
-  ["W_pi_beta", 1, "W<sub>&pi;&beta;</sub>", "pi repulsion strength from beta"],
-  ["W_pi_Lambda", 1.05, "W<sub>&pi;&Lambda;</sub>", "pi attraction strength to Lambda"],
-  ["W_pi_upsilon", 0.5, "W<sub>&pi;&upsilon;</sub>", "strength of pi previous direction"],
-  ["W_e_pi_i", 0.3, "W<sub>&epsilon;&pi;</sub>", "strength of sheep pi angular noise"],
-  ["W_e_beta_j", 0.3, "W<sub>&epsilon;&beta;</sub>", "strength of shepherd beta angular noise"],
-  ["W_beta_beta", 0.5, "W<sub>&beta;&beta;</sub>", "beta repulsion strength from beta"],
-  ["S_t_beta_j", 2.0, "S<sub>&beta;</sub>", "maximum speed of beta per time step"],
-  ["eta", 0.05, "&eta;", "probability of moving per time step while grazing"],
-  ["R2", 4, "R2", "minimum separation distance between a sheepdog and a sheep"],
-  ["R3", 10, "R3", "length of the influencing distance for the sheepdog"],
-  ["ModulationDecayFactor", 2, "decay", "force regulation decay (exponent constant of M1)"],
-  ["GoalRadius", 10, "goal r", "goal region radius"],
-  ["StallingDistance", 1.2, "3R<sup>a</sup><sub>&pi;&pi;</sub>", "Stroembom stalling distance; paper text implies 3Ra = 1.2, shipped Config.xml uses 6 (pending confirmation)"],
+  ["R_pi_beta", 65, "R<sub>&pi;&beta;</sub>", "how far a sheep can sense a sheepdog"],
+  ["Ra_pi_pi", 0.4, "R<sup>a</sup><sub>&pi;&pi;</sub>", "how close two sheep can get before they avoid each other (collision avoidance range)"],
+  ["Rs_pi_pi", 3, "R<sup>s</sup><sub>&pi;&pi;</sub>", "how far a sheep can sense other sheep (neighbourhood / cohesion range)"],
+  ["R_beta_beta", 2, "R<sub>&beta;&beta;</sub>", "how close two sheepdogs can get before they avoid each other"],
+  ["R_beta_pi", 65, "R<sub>&beta;&pi;</sub>", "how far a sheepdog can sense sheep (post-paper library addition; 65 = paper-era unlimited)"],
+  ["W_pi_pi", 2, "W<sub>&pi;&pi;</sub>", "how strongly a sheep is repelled by other sheep"],
+  ["W_pi_beta", 1, "W<sub>&pi;&beta;</sub>", "how strongly a sheep is repelled by a sheepdog (flees)"],
+  ["W_pi_Lambda", 1.05, "W<sub>&pi;&Lambda;</sub>", "how strongly a sheep is attracted to the local centre of mass of its neighbours (cohesion)"],
+  ["W_pi_upsilon", 0.5, "W<sub>&pi;&upsilon;</sub>", "how strongly a sheep keeps moving in its previous direction (inertia)"],
+  ["W_e_pi_i", 0.3, "W<sub>&epsilon;&pi;</sub>", "strength of a sheep's random angular noise (grazing jitter)"],
+  ["W_e_beta_j", 0.3, "W<sub>&epsilon;&beta;</sub>", "strength of a sheepdog's random angular noise"],
+  ["W_beta_beta", 0.5, "W<sub>&beta;&beta;</sub>", "how strongly a sheepdog is repelled by other sheepdogs"],
+  ["S_t_beta_j", 2.0, "S<sub>&beta;</sub>", "a sheepdog's maximum speed per time step"],
+  ["eta", 0.05, "&eta;", "a sheep's probability of moving per time step while grazing (undisturbed)"],
+  ["R2", 4, "R2", "minimum separation distance a sheepdog keeps from a sheep while herding"],
+  ["R3", 10, "R3", "how far beyond R2 a sheepdog's influence on a sheep still reaches"],
+  ["ModulationDecayFactor", 2, "decay", "how quickly a sheepdog's or sheep's regulated force decays with distance"],
+  ["GoalRadius", 10, "goal r", "radius of the goal region a sheep must reach to be counted as herded"],
+  ["StallingDistance", 1.2, "3R<sup>a</sup><sub>&pi;&pi;</sub>", "Stroembom baseline: sheepdog stops moving once this close to a sheep; paper text implies 3Ra = 1.2, shipped Config.xml uses 6 (pending confirmation)"],
 ];
 const FIELD = 50, GOAL = [25, 50];
 let mod = null, running = false, finished = false, model = "proposed";
