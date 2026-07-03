@@ -85,6 +85,27 @@ target_include_directories(shepherd_sim PRIVATE ${SIM} ${LIBC})
 target_link_libraries(shepherd_sim PRIVATE shepherding tinyxml2)
 
 # ----------------------------------------------------------------------------
+# 3b) WebAssembly frontend (web-simulator). Built only under Emscripten:
+#       source ~/emsdk/emsdk_env.sh
+#       emcmake cmake -S . -B build-wasm -DCMAKE_BUILD_TYPE=Release
+#       cmake --build build-wasm -j
+#     Produces shepherd_sim_web.js/.wasm for docs/simulator/.
+# ----------------------------------------------------------------------------
+if(EMSCRIPTEN)
+  add_executable(shepherd_web
+    ${SIM}/wasm_bindings.cpp
+    ${SIM}/Sim.cpp
+    ${SIM}/SupportingCalc.cpp
+  )
+  target_include_directories(shepherd_web PRIVATE ${SIM} ${LIBC})
+  target_link_libraries(shepherd_web PRIVATE shepherding)
+  set_target_properties(shepherd_web PROPERTIES
+    OUTPUT_NAME "shepherd_sim_web"
+    SUFFIX ".js"
+    LINK_FLAGS "-sMODULARIZE=1 -sEXPORT_NAME=createShepherdModule -sALLOW_MEMORY_GROWTH=1 -sEXPORTED_RUNTIME_METHODS=cwrap,HEAPF32 -sENVIRONMENT=web,node")
+endif()
+
+# ----------------------------------------------------------------------------
 # 4) Tests (Milestone M4+; see REQUIREMENTS.md Section 6).
 # ----------------------------------------------------------------------------
 # enable_testing()

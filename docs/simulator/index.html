@@ -1,0 +1,456 @@
+<meta charset="utf-8">
+<title>Shepherding simulator - run the model in your browser</title>
+<style>
+  :root {
+    --ground:#10161d; --panel:#161e28; --line:#26313f; --ink:#c9d3dd; --muted:#77828f;
+    --sheep:#e0aa5e; --dog:#62b6cb; --goal:#7fb069; --warn:#e4604e;
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--ground); color:var(--ink);
+         font:14px/1.5 "Avenir Next","Segoe UI",system-ui,sans-serif;
+         display:flex; justify-content:center; padding:18px 16px; }
+  .wrap { width:min(1180px,100%); }
+  header { display:flex; justify-content:space-between; align-items:baseline;
+           flex-wrap:wrap; gap:2px 16px; margin-bottom:10px; }
+  h1 { font-size:16px; font-weight:600; }
+  header .sub { color:var(--muted); font-size:12px; }
+  .layout { display:grid; grid-template-columns:minmax(0,1fr) 322px; gap:14px; align-items:start; }
+  @media (max-width:920px){ .layout { grid-template-columns:1fr; } }
+  .stage { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:12px; position:relative; }
+  canvas#field { display:block; margin:0 auto; aspect-ratio:1/1; border-radius:3px;
+                 width:min(100%, calc(100vh - 280px)); min-width:280px; height:auto; }
+  #banner { position:absolute; inset:12px 12px auto 12px; display:flex; justify-content:center;
+            pointer-events:none; }
+  #banner .msg { margin-top:20px; background:rgba(13,19,25,.9); border:1px solid var(--goal);
+                 border-radius:5px; padding:8px 18px; font-size:13.5px; color:var(--goal); }
+  .controls { display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+  button { background:#202b38; color:var(--ink); border:1px solid var(--line); border-radius:4px;
+           font:inherit; font-size:13px; padding:5px 14px; cursor:pointer; }
+  button:hover { border-color:#3a4a5d; }
+  button:focus-visible, select:focus-visible, input:focus-visible
+    { outline:2px solid var(--dog); outline-offset:1px; }
+  button.primary { border-color:var(--dog); color:var(--dog); font-weight:600; }
+  .ctl-label { font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .step { font:13px/1 ui-monospace,Menlo,monospace; font-variant-numeric:tabular-nums;
+          color:var(--muted); margin-left:auto; }
+  select, input[type=number] { background:#202b38; color:var(--ink); border:1px solid var(--line);
+           border-radius:4px; font:inherit; font-size:13px; padding:4px 6px; }
+  input[type=number] { width:74px; }
+  .side { display:flex; flex-direction:column; gap:12px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:12px 14px; }
+  .card h2 { font-size:10.5px; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+             color:var(--muted); margin-bottom:8px; }
+  .model-toggle { display:flex; gap:8px; }
+  .model-toggle button { flex:1; }
+  .model-toggle button[aria-pressed="true"] { border-color:var(--sheep); color:var(--sheep); font-weight:600; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; }
+  .field-row { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12.5px; }
+  .field-row label { color:var(--muted); }
+  .patterns { display:flex; flex-wrap:wrap; gap:7px; margin-top:4px; }
+  .pat { flex:1 1 44px; max-width:52px; border:1px solid var(--line); border-radius:4px;
+         padding:4px; cursor:pointer; background:#131a23; text-align:center; }
+  .pat[data-active="1"] { border-color:var(--sheep); }
+  .pat canvas { width:100%; image-rendering:pixelated; }
+  .pat .lab { font-size:10px; color:var(--muted); }
+  .pat[data-active="1"] .lab { color:var(--sheep); }
+  details { border-top:1px solid var(--line); margin-top:10px; padding-top:8px; }
+  summary { cursor:pointer; font-size:12px; color:var(--muted); }
+  details .grid2 { margin-top:8px; }
+  .metrics { display:grid; grid-template-columns:auto 1fr; gap:3px 12px;
+             font:12.5px ui-monospace,Menlo,monospace; font-variant-numeric:tabular-nums; }
+  .metrics dt { color:var(--muted); }
+  .metrics dd { text-align:right; }
+  #chart { width:100%; display:block; }
+  .stat, .note { font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.45; }
+  .stat b { color:var(--ink); }
+  .legend { display:grid; gap:5px; font-size:12.5px; }
+  .legend span { display:flex; align-items:center; gap:8px; }
+  .dot { width:10px; height:10px; border-radius:50%; flex:none; }
+</style>
+<div class="wrap">
+  <header>
+    <h1>Shepherding simulator</h1>
+    <span class="sub">The reactive shepherding library of El-Fiqi et al., IEEE Access 2020
+      (DOI 10.1109/ACCESS.2020.3037325), compiled unchanged to WebAssembly - running live in your browser</span>
+  </header>
+  <div class="layout">
+    <div class="stage">
+      <canvas id="field" width="800" height="800"></canvas>
+      <div id="banner" hidden><span class="msg" id="bannerMsg"></span></div>
+      <div class="controls">
+        <button id="run" class="primary">Run</button>
+        <button id="pause" hidden>Pause</button>
+        <span class="ctl-label" id="spdLab">speed</span>
+        <select id="speed" aria-labelledby="spdLab">
+          <option value="1">1 step/frame</option>
+          <option value="2" selected>2 steps/frame</option>
+          <option value="5">5 steps/frame</option>
+          <option value="20">20 steps/frame</option>
+        </select>
+        <button id="trails" aria-pressed="true">Trails: on</button>
+        <button id="csv" disabled>Download CSV</button>
+        <span class="step" id="stepLabel">ready</span>
+      </div>
+      <p class="note">Space runs and pauses. Every run is seeded and exactly repeatable; change
+      the seed for a different episode. The dashed circle is the goal region: the task completes
+      when every sheep is inside it.</p>
+    </div>
+    <div class="side">
+      <div class="card">
+        <h2>Model (the IEEE Access comparison)</h2>
+        <div class="model-toggle" role="group" aria-label="model">
+          <button id="mProposed" aria-pressed="true">Regulated (proposed)</button>
+          <button id="mStrombom" aria-pressed="false">Str&ouml;mbom baseline</button>
+        </div>
+        <p class="note" id="modelNote">Regulated forces, distance-based neighbourhood, circular
+        path planning: the model proposed in the paper.</p>
+      </div>
+      <div class="card">
+        <h2>Scenario</h2>
+        <div class="grid2">
+          <div class="field-row"><label for="pN">sheep N</label>
+            <input id="pN" type="number" min="10" max="200" step="10" value="100"></div>
+          <div class="field-row"><label for="pM">sheepdogs M</label>
+            <input id="pM" type="number" min="1" max="10" value="1"></div>
+          <div class="field-row"><label for="pSeed">seed</label>
+            <input id="pSeed" type="number" min="0" max="99999" value="0"></div>
+          <div class="field-row"><label for="pMax">max steps</label>
+            <input id="pMax" type="number" min="100" max="8000" step="100" value="2000"></div>
+        </div>
+        <div class="field-row" style="margin-top:8px"><label>sheep starting formation</label></div>
+        <div class="patterns" id="patterns"></div>
+        <details>
+          <summary>parameters (Table 2 of the paper)</summary>
+          <div class="grid2" id="paramGrid"></div>
+          <p class="note">Defaults are Table 2 of the paper. The sheepdog sensing range
+          R_beta_pi defaults to 65 (unlimited in practice), matching the paper-era model;
+          the limited-sensing extension added to the library later can be explored by
+          lowering it.</p>
+        </details>
+      </div>
+      <div class="card">
+        <h2>Telemetry</h2>
+        <dl class="metrics">
+          <dt>timestep</dt><dd id="tStep">0</dd>
+          <dt>sheep in goal region</dt><dd id="tAtGoal">0 / 100</dd>
+          <dt>flock centre to goal</dt><dd id="tGcm">-</dd>
+          <dt>flock spread (max from centre)</dt><dd id="tSpread">-</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h2>Flock centre to goal distance</h2>
+        <canvas id="chart" width="288" height="86"></canvas>
+        <p class="stat" id="chartStat">run to populate</p>
+      </div>
+      <div class="card">
+        <h2>Legend</h2>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--sheep)"></i>sheep (swarm being herded)</span>
+          <span><i class="dot" style="background:var(--dog)"></i>sheepdog</span>
+          <span><i class="dot" style="background:var(--goal)"></i>goal region (radius from config)</span>
+        </div>
+        <p class="note">Same physics as the Visual Studio / SDL2 build: the library is compiled
+        to WebAssembly, not reimplemented. Trajectories differ from a native run with the same
+        seed only through standard-library random-draw and rounding differences (see
+        docs/web_simulator_validation.md).</p>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="shepherd_sim_web.js"></script>
+<script>
+const PATTERNS = {
+  1:{cells:[...Array(25).keys()], name:"P1"}, 2:{cells:[1,2,3,6,7,8], name:"P2"},
+  3:{cells:[1,3,10,12,14], name:"P3"}, 4:{cells:[0,4,10,14,22], name:"P4"},
+  5:{cells:[2,10,14,20,24], name:"P5"}, 6:{cells:[0,4,20,24], name:"P6"},
+};
+// Table 2 of the paper == InputFiles/Config.xml, exposed as editable advanced parameters.
+const PARAM_DEFS = [
+  ["R_pi_beta", 65, "sheep sense dog"], ["Ra_pi_pi", 0.4, "sheep avoidance"],
+  ["Rs_pi_pi", 3, "sheep cohesion range"], ["R_beta_beta", 2, "dog-dog range"],
+  ["R_beta_pi", 65, "dog senses sheep"],
+  ["W_pi_pi", 2, "repulse sheep"], ["W_pi_beta", 1, "flee dog"],
+  ["W_pi_Lambda", 1.05, "cohesion"], ["W_pi_upsilon", 0.5, "inertia"],
+  ["W_e_pi_i", 0.3, "sheep jitter"], ["W_e_beta_j", 0.3, "dog jitter"],
+  ["W_beta_beta", 0.5, "dog-dog repulse"],
+  ["S_t_beta_j", 2.0, "dog speed"], ["eta", 0.05, "graze prob"],
+  ["R2", 4, "min dog gap"], ["R3", 10, "influence length"],
+  ["ModulationDecayFactor", 2, "decay"], ["GoalRadius", 10, "goal radius"],
+];
+const FIELD = 50, GOAL = [25, 50];
+let mod = null, running = false, finished = false, model = "proposed";
+let trails = true, history = [], nDogs = 1, nSheep = 100, goalRadius = 10;
+
+const cv = document.getElementById('field'), cx = cv.getContext('2d');
+const ch = document.getElementById('chart'), chx = ch.getContext('2d');
+const S = cv.width / FIELD;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const $ = id => document.getElementById(id);
+const X = x => x * S, Y = y => cv.height - y * S;
+
+function buildPatternCards() {
+  const host = $('patterns');
+  for (const key of Object.keys(PATTERNS)) {
+    const card = document.createElement('div');
+    card.className = 'pat'; card.dataset.key = key;
+    card.dataset.active = key === '1' ? '1' : '0';
+    card.setAttribute('role', 'button'); card.tabIndex = 0;
+    const mini = document.createElement('canvas');
+    mini.width = 40; mini.height = 40;
+    const g = mini.getContext('2d');
+    g.fillStyle = '#0d1319'; g.fillRect(0, 0, 40, 40);
+    for (const c of PATTERNS[key].cells) {
+      g.fillStyle = 'rgba(224,170,94,.9)';
+      g.fillRect((c % 5) * 8 + 1, (4 - Math.floor(c / 5)) * 8 + 1, 6, 6);
+    }
+    card.appendChild(mini);
+    const lab = document.createElement('div');
+    lab.className = 'lab'; lab.textContent = PATTERNS[key].name;
+    card.appendChild(lab);
+    const pick = () => {
+      document.querySelectorAll('.pat').forEach(p => p.dataset.active = '0');
+      card.dataset.active = '1';
+    };
+    card.addEventListener('click', pick);
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); }
+    });
+    host.appendChild(card);
+  }
+}
+
+function buildParamGrid() {
+  const host = $('paramGrid');
+  for (const [name, def] of PARAM_DEFS) {
+    const row = document.createElement('div');
+    row.className = 'field-row';
+    row.innerHTML = `<label for="pp_${name}">${name}</label>` +
+      `<input id="pp_${name}" type="number" step="any" value="${def}">`;
+    host.appendChild(row);
+  }
+}
+const P = name => parseFloat($('pp_' + name).value);
+
+function setModel(m) {
+  model = m;
+  $('mProposed').setAttribute('aria-pressed', m === 'proposed');
+  $('mStrombom').setAttribute('aria-pressed', m === 'strombom');
+  $('modelNote').textContent = m === 'proposed'
+    ? 'Regulated forces, distance-based neighbourhood, circular path planning: the model proposed in the paper.'
+    : 'Strömbom et al. (2014) baseline: unregulated forces, nearest-n neighbourhood (n = 0.5 N), stalling; the comparison model of Fig. 5.';
+}
+$('mProposed').onclick = () => setModel('proposed');
+$('mStrombom').onclick = () => setModel('strombom');
+
+function createSim() {
+  const strombom = model === 'strombom';
+  nSheep = parseInt($('pN').value); nDogs = parseInt($('pM').value);
+  goalRadius = P('GoalRadius');
+  const pattern = parseInt(document.querySelector('.pat[data-active="1"]').dataset.key);
+  mod._sim_create(
+    parseInt($('pSeed').value), nSheep, nDogs, FIELD,
+    P('R_pi_beta'), P('Ra_pi_pi'), P('Rs_pi_pi'), P('R_beta_beta'), P('R_beta_pi'),
+    P('W_pi_pi'), P('W_beta_beta'), P('W_pi_beta'), P('W_pi_Lambda'),
+    P('W_pi_upsilon'), P('W_e_pi_i'), P('W_e_beta_j'),
+    P('S_t_beta_j'), P('eta'),
+    strombom ? Math.round(0.5 * nSheep) : nSheep - 1, nSheep,
+    GOAL[0], GOAL[1], goalRadius,
+    strombom ? 0 : 1, strombom ? 1 : 0, 3 * P('Ra_pi_pi'),
+    P('R2'), P('R3'), strombom ? 0 : 1, strombom ? 0 : 1,
+    strombom ? 0 : 1, strombom ? 0 : 1, strombom ? 0 : 1,
+    P('ModulationDecayFactor'),
+    20, 20, 10, 10, pattern,
+    15, 45, 20, 5,
+    parseInt($('pMax').value));
+  history = [];
+  finished = false;
+  $('banner').hidden = true;
+  $('csv').disabled = true;
+  record();
+  draw();
+}
+
+function positions() {
+  const ptr = mod._sim_positions() >> 2;
+  const n = nDogs + nSheep;
+  const out = [];
+  for (let i = 0; i < n; i++) out.push([mod.HEAPF32[ptr + 2 * i], mod.HEAPF32[ptr + 2 * i + 1]]);
+  return out;
+}
+
+function record() {
+  history.push({ t: mod._sim_time(), pos: positions() });
+}
+
+function stats(pos) {
+  let gx = 0, gy = 0, atGoal = 0;
+  for (let i = nDogs; i < pos.length; i++) {
+    gx += pos[i][0]; gy += pos[i][1];
+    if (Math.hypot(pos[i][0] - GOAL[0], pos[i][1] - GOAL[1]) <= goalRadius) atGoal++;
+  }
+  gx /= nSheep; gy /= nSheep;
+  let spread = 0;
+  for (let i = nDogs; i < pos.length; i++)
+    spread = Math.max(spread, Math.hypot(pos[i][0] - gx, pos[i][1] - gy));
+  return { gx, gy, atGoal, spread, dGoal: Math.hypot(gx - GOAL[0], gy - GOAL[1]) };
+}
+
+function draw() {
+  const frame = history[history.length - 1];
+  cx.fillStyle = '#0d1319'; cx.fillRect(0, 0, cv.width, cv.height);
+  cx.strokeStyle = '#1c2632'; cx.lineWidth = 1;
+  for (let g = 10; g < FIELD; g += 10) {
+    cx.beginPath(); cx.moveTo(X(g), 0); cx.lineTo(X(g), cv.height); cx.stroke();
+    cx.beginPath(); cx.moveTo(0, Y(g)); cx.lineTo(cv.width, Y(g)); cx.stroke();
+  }
+  // goal region
+  cx.setLineDash([6, 5]); cx.strokeStyle = css('--goal'); cx.lineWidth = 1.4;
+  cx.beginPath(); cx.arc(X(GOAL[0]), Y(GOAL[1]), goalRadius * S, 0, 7); cx.stroke();
+  cx.setLineDash([]);
+  cx.fillStyle = css('--goal');
+  cx.beginPath(); cx.arc(X(GOAL[0]), Y(GOAL[1]), 4, 0, 7); cx.fill();
+  cx.font = '11px ui-monospace,monospace';
+  cx.fillText('goal', X(GOAL[0]) + 9, Y(GOAL[1]) + 12);
+  if (trails) {
+    const from = Math.max(0, history.length - 40);
+    for (let k = from; k < history.length - 1; k++) {
+      const a = 0.25 * (k - from) / Math.max(1, history.length - from);
+      const p = history[k].pos;
+      cx.fillStyle = 'rgba(98,182,203,' + a + ')';
+      for (let i = 0; i < nDogs; i++) cx.fillRect(X(p[i][0]) - 1, Y(p[i][1]) - 1, 2, 2);
+      cx.fillStyle = 'rgba(224,170,94,' + (a * 0.7) + ')';
+      for (let i = nDogs; i < p.length; i++) cx.fillRect(X(p[i][0]) - 1, Y(p[i][1]) - 1, 2, 2);
+    }
+  }
+  const st = stats(frame.pos);
+  cx.fillStyle = css('--sheep');
+  for (let i = nDogs; i < frame.pos.length; i++) {
+    cx.beginPath(); cx.arc(X(frame.pos[i][0]), Y(frame.pos[i][1]), 3, 0, 7); cx.fill();
+  }
+  cx.fillStyle = css('--dog');
+  for (let i = 0; i < nDogs; i++) {
+    cx.beginPath(); cx.arc(X(frame.pos[i][0]), Y(frame.pos[i][1]), 5.5, 0, 7); cx.fill();
+    cx.strokeStyle = 'rgba(98,182,203,.45)';
+    cx.beginPath(); cx.arc(X(frame.pos[i][0]), Y(frame.pos[i][1]), 9, 0, 7); cx.stroke();
+  }
+  $('tStep').textContent = frame.t;
+  $('tAtGoal').textContent = st.atGoal + ' / ' + nSheep;
+  $('tGcm').textContent = st.dGoal.toFixed(1) + ' u';
+  $('tSpread').textContent = st.spread.toFixed(1) + ' u';
+  $('stepLabel').textContent = finished
+    ? (mod._sim_goal_found() ? 'herded in ' + frame.t + ' steps' : 'stopped at step ' + frame.t)
+    : 'timestep ' + frame.t;
+  drawChart();
+}
+
+function drawChart() {
+  chx.clearRect(0, 0, ch.width, ch.height);
+  if (history.length < 2) return;
+  const series = history.map(h => stats(h.pos).dGoal);
+  const mmax = Math.max(...series) * 1.08;
+  const gy = v => ch.height - 12 - (v / mmax) * (ch.height - 18);
+  chx.fillStyle = '#5b6875'; chx.font = '9px ui-monospace,monospace';
+  chx.fillText('0', 2, ch.height - 2);
+  chx.fillText(String(history[history.length - 1].t), ch.width - 26, ch.height - 2);
+  chx.strokeStyle = '#33404f'; chx.setLineDash([3, 3]);
+  chx.beginPath(); chx.moveTo(0, gy(goalRadius)); chx.lineTo(ch.width, gy(goalRadius)); chx.stroke();
+  chx.setLineDash([]);
+  chx.fillText('goal radius', 4, gy(goalRadius) - 3);
+  chx.strokeStyle = css('--sheep'); chx.lineWidth = 1.4; chx.beginPath();
+  series.forEach((v, k) => {
+    const px = k / (history.length - 1) * ch.width;
+    k ? chx.lineTo(px, gy(v)) : chx.moveTo(px, gy(v));
+  });
+  chx.stroke();
+  $('chartStat').textContent = 'distance now: ' + series[series.length - 1].toFixed(1) + ' u';
+}
+
+function frameLoop() {
+  if (running && !finished) {
+    const perFrame = parseInt($('speed').value);
+    for (let i = 0; i < perFrame; i++) {
+      const alive = mod._sim_step();
+      record();
+      if (!alive) {
+        finished = true; running = false;
+        $('run').hidden = false; $('pause').hidden = true;
+        $('csv').disabled = false;
+        const ok = mod._sim_goal_found();
+        $('bannerMsg').textContent = ok
+          ? 'Task complete: all ' + nSheep + ' sheep herded to the goal in ' + mod._sim_time() + ' steps'
+          : 'Not completed within ' + mod._sim_time() + ' steps (paper caps at 2000)';
+        $('bannerMsg').style.color = ok ? css('--goal') : css('--warn');
+        $('banner').hidden = false;
+        break;
+      }
+    }
+    draw();
+  }
+  lastTick = performance.now();
+  scheduleRaf();
+}
+
+// Browsers suspend requestAnimationFrame for hidden or occluded windows (and the
+// visibility API does not always report it), so a watchdog timer keeps the run
+// progressing at a reduced rate whenever animation frames starve; full frame rate
+// resumes automatically when the window is visible again.
+let lastTick = 0, rafPending = false;
+function scheduleRaf() {
+  if (rafPending) return;
+  rafPending = true;
+  requestAnimationFrame(() => { rafPending = false; frameLoop(); });
+}
+setInterval(() => {
+  if (performance.now() - lastTick > 300) frameLoop();
+}, 250);
+
+$('run').onclick = () => {
+  if (!mod) return;
+  if (finished || history.length === 0) createSim();
+  running = true;
+  $('run').hidden = true; $('pause').hidden = false;
+};
+$('pause').onclick = () => {
+  running = false;
+  $('run').hidden = false; $('pause').hidden = true;
+  $('run').textContent = 'Resume';
+};
+['pN','pM','pSeed','pMax'].forEach(id => $(id).addEventListener('change', () => {
+  finished = false; history = []; $('run').textContent = 'Run';
+}));
+$('trails').onclick = e => {
+  trails = !trails;
+  e.target.setAttribute('aria-pressed', trails);
+  e.target.textContent = 'Trails: ' + (trails ? 'on' : 'off');
+  if (history.length) draw();
+};
+$('csv').onclick = () => {
+  let out = 't';
+  for (let i = 0; i < nDogs; i++) out += `,dog${i}x,dog${i}y`;
+  for (let i = 0; i < nSheep; i++) out += `,s${i}x,s${i}y`;
+  out += '\n';
+  for (const h of history)
+    out += h.t + ',' + h.pos.map(p => p[0].toFixed(3) + ',' + p[1].toFixed(3)).join(',') + '\n';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([out], { type: 'text/csv' }));
+  a.download = 'shepherding_run_seed' + $('pSeed').value + '.csv';
+  a.click();
+};
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !/INPUT|SELECT|SUMMARY/.test(e.target.tagName)
+      && !e.target.classList.contains('pat')) {
+    e.preventDefault();
+    (running ? $('pause') : $('run')).click();
+  }
+});
+
+buildPatternCards();
+buildParamGrid();
+setModel('proposed');
+createShepherdModule().then(m => {
+  mod = m;
+  createSim();               // show the starting formation immediately
+  $('stepLabel').textContent = 'ready - press Run';
+});
+scheduleRaf();
+</script>

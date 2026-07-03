@@ -3,3 +3,4 @@ Student Work/
 local_review/
 build-native/
 build-wasm/
+__pycache__/

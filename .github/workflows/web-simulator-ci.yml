@@ -1,0 +1,47 @@
+name: web-simulator
+
+on:
+  push:
+    branches: ["web-simulator"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  native-and-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build native
+        run: |
+          cmake -S . -B build-native -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-native -j
+
+      - name: T0 baseline regression
+        run: |
+          TMP=$(mktemp -d)
+          cp InputFiles/Config.xml "$TMP/"
+          (cd "$TMP" && "$GITHUB_WORKSPACE/build-native/shepherd_sim" Config.xml > /dev/null)
+          NEW=$(sha256sum "$TMP/Config_OutPutData.csv" | cut -d' ' -f1)
+          REF=$(cut -d' ' -f1 tests/baseline/T0_sha256.txt)
+          test "$NEW" = "$REF" && echo "T0 PASS"
+
+      - name: Native battery smoke (proposed, P1, 3 seeds)
+        run: python3 tools/native_battery.py build-native/shepherd_sim proposed 3 1
+
+      - uses: mymindstorm/setup-emsdk@v14
+
+      - name: Build wasm
+        run: |
+          emcmake cmake -S . -B build-wasm -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-wasm -j
+
+      - name: Wasm battery smoke (T0 scenario + proposed, P1, 3 seeds)
+        run: |
+          node tools/wasm_battery.js build-wasm/shepherd_sim_web.js t0
+          node tools/wasm_battery.js build-wasm/shepherd_sim_web.js battery proposed 3 1
+
+      - name: Simulator page ships the current module
+        run: |
+          cmp build-wasm/shepherd_sim_web.wasm docs/simulator/shepherd_sim_web.wasm \
+            || echo "::warning::docs/simulator wasm is stale; copy build-wasm artefacts"
