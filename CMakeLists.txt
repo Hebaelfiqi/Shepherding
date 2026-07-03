@@ -34,6 +34,14 @@ endif()
 #      - dllmain.cpp                     (DLL entry point)
 #      - Properties/AssemblyInfo.cpp     (Windows assembly attributes)
 # ----------------------------------------------------------------------------
+# The library headers annotate classes with __declspec(dllexport/dllimport) for the
+# Windows DLL build. Neutralise the keyword for non-MSVC compilers instead of editing
+# every header (keeps the base sources untouched).
+if(NOT MSVC)
+  # add_compile_definitions silently drops function-like macros; pass the flag raw.
+  add_compile_options("-D__declspec(x)=")
+endif()
+
 set(LIBC ShepherdingLibC)
 add_library(shepherding STATIC
   ${LIBC}/Agents.cpp
@@ -55,8 +63,8 @@ target_include_directories(shepherding PUBLIC ${LIBC} ShepherdingSimC_V1)
 # ----------------------------------------------------------------------------
 # 2) Portable XML parser for the config loader (vendored in M0.5).
 # ----------------------------------------------------------------------------
-# add_library(tinyxml2 STATIC third_party/tinyxml2/tinyxml2.cpp)
-# target_include_directories(tinyxml2 PUBLIC third_party/tinyxml2)
+add_library(tinyxml2 STATIC third_party/tinyxml2/tinyxml2.cpp)
+target_include_directories(tinyxml2 PUBLIC third_party/tinyxml2)
 
 # ----------------------------------------------------------------------------
 # 3) Headless simulation executable.
@@ -70,11 +78,32 @@ add_executable(shepherd_sim
   ${SIM}/Sim.cpp
   ${SIM}/SupportingCalc.cpp
   ${SIM}/CLI.cpp
-  # ${SIM}/main_headless.cpp        # TODO(M0.5): create this
-  # ${SIM}/ConfigLoaderPortable.cpp # TODO(M0.5): tinyxml2-based loader extracted from the old main
+  ${SIM}/main_headless.cpp
+  ${SIM}/ConfigLoaderPortable.cpp
 )
 target_include_directories(shepherd_sim PRIVATE ${SIM} ${LIBC})
-target_link_libraries(shepherd_sim PRIVATE shepherding)   # add tinyxml2 once vendored
+target_link_libraries(shepherd_sim PRIVATE shepherding tinyxml2)
+
+# ----------------------------------------------------------------------------
+# 3b) WebAssembly frontend (web-simulator). Built only under Emscripten:
+#       source ~/emsdk/emsdk_env.sh
+#       emcmake cmake -S . -B build-wasm -DCMAKE_BUILD_TYPE=Release
+#       cmake --build build-wasm -j
+#     Produces shepherd_sim_web.js/.wasm for docs/simulator/.
+# ----------------------------------------------------------------------------
+if(EMSCRIPTEN)
+  add_executable(shepherd_web
+    ${SIM}/wasm_bindings.cpp
+    ${SIM}/Sim.cpp
+    ${SIM}/SupportingCalc.cpp
+  )
+  target_include_directories(shepherd_web PRIVATE ${SIM} ${LIBC})
+  target_link_libraries(shepherd_web PRIVATE shepherding)
+  set_target_properties(shepherd_web PROPERTIES
+    OUTPUT_NAME "shepherd_sim_web"
+    SUFFIX ".js"
+    LINK_FLAGS "-sMODULARIZE=1 -sEXPORT_NAME=createShepherdModule -sALLOW_MEMORY_GROWTH=1 -sEXPORTED_RUNTIME_METHODS=cwrap,HEAPF32 -sENVIRONMENT=web,node")
+endif()
 
 # ----------------------------------------------------------------------------
 # 4) Tests (Milestone M4+; see REQUIREMENTS.md Section 6).
