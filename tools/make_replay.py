@@ -43,33 +43,42 @@ TEMPLATE = r"""<title>Adversarial patrolling replay</title>
   * { box-sizing:border-box; margin:0; }
   body { background:var(--ground); color:var(--ink);
          font:14px/1.5 "Avenir Next","Segoe UI",system-ui,sans-serif;
-         display:flex; justify-content:center; padding:24px 16px; }
-  .wrap { width:min(1100px,100%); }
+         display:flex; justify-content:center; padding:18px 16px; }
+  .wrap { width:min(1140px,100%); }
   header { display:flex; justify-content:space-between; align-items:baseline;
-           flex-wrap:wrap; gap:4px 16px; margin-bottom:14px; }
-  h1 { font-size:17px; font-weight:600; letter-spacing:.01em; }
-  header .sub { color:var(--muted); font-size:12.5px; }
-  .layout { display:grid; grid-template-columns:minmax(0,1fr) 286px; gap:14px; }
-  @media (max-width:860px){ .layout { grid-template-columns:1fr; } }
+           flex-wrap:wrap; gap:2px 16px; margin-bottom:10px; }
+  h1 { font-size:16px; font-weight:600; letter-spacing:.01em; }
+  header .sub { color:var(--muted); font-size:12px; }
+  .layout { display:grid; grid-template-columns:minmax(0,1fr) 286px; gap:14px; align-items:start; }
+  @media (max-width:880px){ .layout { grid-template-columns:1fr; } }
   .stage { background:var(--panel); border:1px solid var(--line); border-radius:6px;
            padding:12px; position:relative; }
-  canvas#field { width:100%; height:auto; display:block; border-radius:3px; }
-  #overlay { position:absolute; inset:12px auto auto 12px; right:12px;
-             display:flex; align-items:flex-start; justify-content:center;
-             pointer-events:none; }
-  #overlay .msg { margin-top:26px; background:rgba(13,19,25,.88);
-                  border:1px solid var(--line); border-radius:5px; padding:9px 16px;
+  /* The field always fits the viewport together with the transport controls:
+     width bound by the column, height bound by the viewport budget. */
+  canvas#field { display:block; margin:0 auto; aspect-ratio:1/1; border-radius:3px;
+                 width:min(100%, calc(100vh - 300px)); min-width:280px; height:auto; }
+  #overlay { position:absolute; inset:12px 12px auto 12px; display:flex;
+             justify-content:center; cursor:pointer; }
+  #overlay .msg { margin-top:22px; background:rgba(13,19,25,.9);
+                  border:1px solid var(--line); border-radius:5px; padding:8px 16px;
                   font-size:13px; color:var(--ink); }
   #overlay .msg b { color:var(--attacker); font-weight:600; }
-  .controls { display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  #overlay .msg small { color:var(--muted); }
+  .controls { display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
   button { background:#202b38; color:var(--ink); border:1px solid var(--line); border-radius:4px;
            font:inherit; font-size:13px; padding:5px 14px; cursor:pointer; }
   button:hover { border-color:#3a4a5d; }
-  button:focus-visible { outline:2px solid var(--defender); outline-offset:1px; }
+  button:focus-visible, .pat:focus-visible, select:focus-visible, input:focus-visible
+    { outline:2px solid var(--defender); outline-offset:1px; }
   button[aria-pressed="true"] { border-color:var(--defender); color:var(--defender); }
-  input[type=range] { flex:1; min-width:120px; accent-color:var(--defender); }
+  input[type=range] { flex:1; min-width:110px; accent-color:var(--defender); }
+  .ctl-label { font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+               color:var(--muted); }
   .step { font:13px/1 ui-monospace,"Cascadia Code",Menlo,monospace;
           font-variant-numeric:tabular-nums; color:var(--muted); min-width:150px; }
+  .hint { color:var(--muted); font-size:11.5px; margin-top:8px; }
+  select { background:#202b38; color:var(--ink); border:1px solid var(--line);
+           border-radius:4px; font:inherit; font-size:13px; padding:4px 6px; }
   .side { display:flex; flex-direction:column; gap:12px; }
   .card { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:12px 14px; }
   .card h2 { font-size:10.5px; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
@@ -86,22 +95,29 @@ TEMPLATE = r"""<title>Adversarial patrolling replay</title>
   .dot { width:10px; height:10px; border-radius:50%; flex:none; }
   .ring { width:10px; height:10px; border-radius:50%; flex:none; border:1px dashed var(--muted); }
   .target { width:12px; height:12px; flex:none; }
-  #spark, #cluststrip { width:100%; display:block; }
-  .hint { color:var(--muted); font-size:11.5px; margin-top:10px; }
-  select { background:#202b38; color:var(--ink); border:1px solid var(--line);
-           border-radius:4px; font:inherit; font-size:13px; padding:4px 6px; }
-  .patterns { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-  .pat { border:1px solid var(--line); border-radius:5px; padding:7px 6px 5px; text-align:center;
-         cursor:grab; background:#131a23; }
+  #spark, #cluststrip { width:100%; display:block; cursor:crosshair; touch-action:none; }
+  .chart-hint { color:var(--muted); font-size:10.5px; margin-top:4px; }
+  .stat { font:12px ui-monospace,Menlo,monospace; color:var(--muted); margin-top:6px;
+          font-variant-numeric:tabular-nums; }
+  .stat b { color:var(--ink); font-weight:600; }
+  /* formation picker: setup control, lives under the field it configures */
+  .pattern-strip { margin-top:12px; border-top:1px solid var(--line); padding-top:10px; }
+  .pattern-strip h2 { font-size:10.5px; font-weight:600; letter-spacing:.14em;
+                      text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  .patterns { display:flex; flex-wrap:wrap; gap:8px; }
+  .pat { flex:1 1 100px; max-width:118px; border:1px solid var(--line); border-radius:5px;
+         padding:6px 6px 5px; text-align:center; cursor:grab; background:#131a23; }
   .pat:hover { border-color:#3a4a5d; }
   .pat[data-active="1"] { border-color:var(--attacker); }
   .pat canvas { width:100%; image-rendering:pixelated; border-radius:2px; }
   .pat .lab { font-size:10.5px; color:var(--muted); margin-top:4px; line-height:1.25; }
-  .pat[data-active="1"] .lab b { color:var(--attacker); }
   .pat .lab b { font-size:11px; color:var(--ink); }
-  .stat { font:12px ui-monospace,Menlo,monospace; color:var(--muted); margin-top:6px;
-          font-variant-numeric:tabular-nums; }
-  .stat b { color:var(--ink); font-weight:600; }
+  .pat[data-active="1"] .lab b { color:var(--attacker); }
+  /* compact readout on the stage for narrow screens where the side column stacks far below */
+  #miniHud { display:none; margin-top:8px; font:12px ui-monospace,Menlo,monospace;
+             color:var(--muted); font-variant-numeric:tabular-nums; }
+  #miniHud b { color:var(--defender); font-weight:600; }
+  @media (max-width:880px){ #miniHud { display:block; } }
 </style>
 <div class="wrap">
   <header>
@@ -115,7 +131,8 @@ TEMPLATE = r"""<title>Adversarial patrolling replay</title>
       <div class="controls">
         <button id="play" aria-pressed="false">Play</button>
         <button id="reset">Restart</button>
-        <select id="speed" aria-label="Playback speed">
+        <span class="ctl-label" id="speedLabel">speed</span>
+        <select id="speed" aria-labelledby="speedLabel">
           <option value="0.15">0.15x</option>
           <option value="0.25" selected>0.25x</option>
           <option value="0.5">0.5x</option>
@@ -123,19 +140,20 @@ TEMPLATE = r"""<title>Adversarial patrolling replay</title>
           <option value="2">2x</option>
           <option value="4">4x</option>
         </select>
-        <button id="trails" aria-pressed="true">Trails</button>
+        <button id="trails" aria-pressed="true">Trails: on</button>
         <input id="scrub" type="range" min="0" max="__TMAX__" value="0" aria-label="Timestep">
         <span class="step" id="stepLabel">timestep 0 / __TMAX__</span>
       </div>
-      <p class="hint">Space plays and pauses. Drag the slider to scrub. Drag a formation card onto
-      the field (or click it) to load that run. The dashed ring around the AOI is the target
-      standoff: the swarm should be held outside it.</p>
-    </div>
-    <div class="side">
-      <div class="card" id="patternCard">
-        <h2>Starting formation (drag onto field)</h2>
+      <p class="hint">Space plays and pauses. Jump in time with the slider or by clicking
+      either chart. Load a formation by clicking its card or dragging it onto the field.</p>
+      <div id="miniHud"><b id="hudBC">BC1 Driving</b> &nbsp; swarm <span id="hudM1">0.0</span> u
+        from AOI &nbsp; standoff breached <span id="hudBreach">0%</span></div>
+      <div class="pattern-strip">
+        <h2>Starting formation</h2>
         <div class="patterns" id="patterns"></div>
       </div>
+    </div>
+    <div class="side">
       <div class="card">
         <h2>Defender decision (this timestep)</h2>
         <span class="bc-chip" id="bcChip">BC1 Driving</span>
@@ -155,12 +173,13 @@ TEMPLATE = r"""<title>Adversarial patrolling replay</title>
       </div>
       <div class="card">
         <h2>Swarm to AOI distance</h2>
-        <canvas id="spark" width="252" height="72"></canvas>
-        <p class="stat">inside target standoff: <b id="breachPct">0%</b> of timesteps so far</p>
+        <canvas id="spark" width="252" height="86" role="slider" aria-label="Distance timeline, click to jump"></canvas>
+        <p class="chart-hint">click or drag on the chart to jump to that timestep</p>
+        <p class="stat">standoff breached: <b id="breachPct">0%</b> of timesteps so far</p>
       </div>
       <div class="card">
         <h2>Swarm cohesion over time</h2>
-        <canvas id="cluststrip" width="252" height="26"></canvas>
+        <canvas id="cluststrip" width="252" height="40" role="slider" aria-label="Cohesion timeline, click to jump"></canvas>
         <p class="stat">clustered: <b id="clusPct">0%</b> of timesteps so far</p>
       </div>
       <div class="card">
@@ -169,7 +188,7 @@ TEMPLATE = r"""<title>Adversarial patrolling replay</title>
           <span><i class="dot" style="background:var(--attacker)"></i>attacker swarm (N = __N__)</span>
           <span><i class="dot" style="background:var(--defender)"></i>defender (single sheepdog)</span>
           <span><svg class="target" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="none" stroke="#e4604e"/><circle cx="6" cy="6" r="1.8" fill="#e4604e"/></svg>AOI: Area of Interest, the protected point the attackers try to reach</span>
-          <span><i class="ring"></i>target standoff (__EQ__ units): swarm held outside = defence holding</span>
+          <span><i class="ring"></i>target standoff (__EQ__ units): the defence is holding while the swarm stays outside it</span>
         </div>
       </div>
     </div>
@@ -180,7 +199,6 @@ const RUNS = __RUNS__;
 const PATTERNS = __PATTERNS__;
 const AOI = __AOI__, FIELD = __FIELD__, EQ = __EQ__, FN = __FN__;
 const BC = __BCLABELS__;
-const BOX = __BOX__; // sheep initialisation box [x, y, w, h] for the mini-map inset
 const DEFAULT_RUN = __DEFAULT__;
 
 let runKey = DEFAULT_RUN;
@@ -193,7 +211,7 @@ const S = cv.width / FIELD;
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 let t = 0, playing = false, acc = 0, last = 0, trails = true;
 let m1s = [], clustered = [];
-let introTimer = null;
+let introTimer = null, firstIntro = true;
 
 function computeSeries() {
   m1s = DATA.map(r => {
@@ -213,6 +231,18 @@ function computeSeries() {
 
 function X(x) { return x * S; }
 function Y(y) { return cv.height - y * S; }
+
+function tag(x, y, text, color, align) {
+  cx.font = '600 12px "Avenir Next","Segoe UI",sans-serif';
+  cx.textAlign = align || 'left';
+  const w = cx.measureText(text).width;
+  const bx = align === 'right' ? x - w - 6 : x - 3;
+  cx.fillStyle = 'rgba(13,19,25,.85)';
+  cx.fillRect(bx, y - 11, w + 8, 16);
+  cx.fillStyle = color;
+  cx.fillText(text, x, y + 2);
+  cx.textAlign = 'left';
+}
 
 function drawAOI() {
   const ax = X(AOI[0]), ay = Y(AOI[1]);
@@ -264,8 +294,20 @@ function draw() {
   cx.strokeStyle = 'rgba(98,182,203,.45)';
   cx.beginPath(); cx.arc(X(r[1]), Y(r[2]), 9.5, 0, 7); cx.stroke();
 
+  // Teaching labels on the scene itself while the intro hold is up: the observer
+  // decodes the field exactly when there is time to read it.
+  if (!document.getElementById('overlay').hidden) {
+    tag(X(r[1]) + 13, Y(r[2]) - 8, 'defender', css('--defender'));
+    tag(X(gx) + 12, Y(gy) - 10, 'attackers', css('--attacker'));
+    tag(X(AOI[0]), Y(AOI[1]) - 20, 'protected point', css('--aoi'), 'right');
+    tag(X(AOI[0]) + EQ * S * 0.7071, Y(AOI[1]) - EQ * S * 0.7071 - 6,
+        'target standoff', '#8b98a5');
+  }
+
   document.getElementById('bcChip').textContent = BC[r[3] - 1];
+  document.getElementById('hudBC').textContent = BC[r[3] - 1];
   document.getElementById('mM1').textContent = m1s[t].toFixed(1) + ' u';
+  document.getElementById('hudM1').textContent = m1s[t].toFixed(1);
   document.getElementById('mDog').textContent =
     Math.hypot(r[1] - AOI[0], r[2] - AOI[1]).toFixed(1) + ' u';
   const v1 = [gx - AOI[0], gy - AOI[1]], v2 = [r[1] - AOI[0], r[2] - AOI[1]];
@@ -279,40 +321,88 @@ function draw() {
     'timestep ' + r[0] + ' / ' + DATA[DATA.length - 1][0];
   document.getElementById('scrub').value = t;
 
-  // distance graph with target standoff line, breach segments in red
+  drawDistanceChart();
+  drawCohesionStrip();
+}
+
+// Distance timeline: full run drawn faintly for context, progress emphasised,
+// breach segments red AND shaded (redundant position encoding below the dashed
+// line), playhead cursor, sparse axis labels. Clickable to seek.
+function drawDistanceChart() {
   sx.clearRect(0, 0, sp.width, sp.height);
+  const padB = 14, padT = 6;
   const mmax = Math.max(EQ * 1.2, Math.max(...m1s) * 1.05);
-  const gy2 = v => sp.height - 5 - (v / mmax) * (sp.height - 14);
+  const gy = v => sp.height - padB - (v / mmax) * (sp.height - padB - padT);
+  const gx = k => k / (DATA.length - 1) * sp.width;
+  // axes
+  sx.fillStyle = '#5b6875'; sx.font = '9px ui-monospace,monospace';
+  sx.fillText('0', 2, sp.height - 3);
+  sx.fillText(String(DATA[DATA.length - 1][0]), sp.width - 20, sp.height - 3);
+  sx.fillText(mmax.toFixed(0) + 'u', 2, padT + 7);
+  sx.strokeStyle = '#232e3b';
+  sx.beginPath(); sx.moveTo(0, gy(0)); sx.lineTo(sp.width, gy(0)); sx.stroke();
+  // standoff line + breach shading (full run, faint)
   sx.strokeStyle = '#4a5866'; sx.setLineDash([3, 3]);
-  sx.beginPath(); sx.moveTo(0, gy2(EQ)); sx.lineTo(sp.width, gy2(EQ)); sx.stroke();
+  sx.beginPath(); sx.moveTo(0, gy(EQ)); sx.lineTo(sp.width, gy(EQ)); sx.stroke();
   sx.setLineDash([]);
-  sx.fillStyle = '#77828f'; sx.font = '9px ui-monospace,monospace';
-  sx.fillText('target standoff ' + EQ.toFixed(1), 4, gy2(EQ) - 3);
+  sx.fillStyle = '#77828f';
+  sx.fillText('target standoff ' + EQ.toFixed(1), 4, gy(EQ) - 3);
+  // full-run context line
+  sx.strokeStyle = 'rgba(224,170,94,.22)'; sx.lineWidth = 1;
+  sx.beginPath();
+  for (let k = 0; k < DATA.length; k++)
+    k ? sx.lineTo(gx(k), gy(m1s[k])) : sx.moveTo(gx(k), gy(m1s[k]));
+  sx.stroke();
+  // progress line with breach emphasis
   let breaches = 0;
   for (let k = 1; k <= t; k++) {
-    sx.strokeStyle = m1s[k] < EQ ? css('--aoi') : css('--attacker');
-    sx.lineWidth = 1.4;
-    sx.beginPath();
-    sx.moveTo((k - 1) / (DATA.length - 1) * sp.width, gy2(m1s[k - 1]));
-    sx.lineTo(k / (DATA.length - 1) * sp.width, gy2(m1s[k]));
-    sx.stroke();
+    const breach = m1s[k] < EQ;
+    if (breach) {
+      sx.fillStyle = 'rgba(228,96,78,.18)';
+      sx.fillRect(gx(k - 1), gy(EQ), gx(k) - gx(k - 1) + 0.5, gy(m1s[k]) - gy(EQ));
+    }
+    sx.strokeStyle = breach ? css('--aoi') : css('--attacker');
+    sx.lineWidth = breach ? 2 : 1.4;
+    sx.beginPath(); sx.moveTo(gx(k - 1), gy(m1s[k - 1])); sx.lineTo(gx(k), gy(m1s[k])); sx.stroke();
   }
   for (let k = 0; k <= t; k++) if (m1s[k] < EQ) breaches++;
+  // playhead
+  sx.strokeStyle = '#8b98a5';
+  sx.beginPath(); sx.moveTo(gx(t), padT); sx.lineTo(gx(t), sp.height - padB); sx.stroke();
   sx.fillStyle = css('--attacker');
-  sx.beginPath();
-  sx.arc(t / (DATA.length - 1) * sp.width, gy2(m1s[t]), 2.5, 0, 7); sx.fill();
-  document.getElementById('breachPct').textContent =
-    (100 * breaches / (t + 1)).toFixed(0) + '%';
+  sx.beginPath(); sx.arc(gx(t), gy(m1s[t]), 2.5, 0, 7); sx.fill();
+  const pct = (100 * breaches / (t + 1)).toFixed(0) + '%';
+  document.getElementById('breachPct').textContent = pct;
+  document.getElementById('hudBreach').textContent = pct;
+}
 
-  // cohesion strip: green = clustered, red = a straggler beyond fN
+// Cohesion timeline: clustered ticks sit ABOVE the baseline (green), broken ones
+// drop BELOW it (red), so state reads by position as well as colour. Clickable.
+function drawCohesionStrip() {
   csx.clearRect(0, 0, cs.width, cs.height);
-  csx.fillStyle = '#1c2632'; csx.fillRect(0, 8, cs.width, 12);
+  const mid = 20;
+  csx.strokeStyle = '#3a4653';
+  csx.beginPath(); csx.moveTo(0, mid); csx.lineTo(cs.width, mid); csx.stroke();
+  csx.fillStyle = '#5b6875'; csx.font = '9px ui-monospace,monospace';
+  csx.fillText('0', 2, cs.height - 1);
+  csx.fillText(String(DATA[DATA.length - 1][0]), cs.width - 20, cs.height - 1);
+  const bw = Math.max(1, cs.width / DATA.length);
+  // full-run context, faint
+  for (let k = 0; k < DATA.length; k++) {
+    csx.fillStyle = clustered[k] ? 'rgba(127,176,105,.18)' : 'rgba(228,96,78,.18)';
+    csx.fillRect(k / (DATA.length - 1) * cs.width, clustered[k] ? mid - 9 : mid + 1, bw, 8);
+  }
   let clus = 0;
   for (let k = 0; k <= t; k++) {
     if (clustered[k]) clus++;
     csx.fillStyle = clustered[k] ? css('--good') : css('--aoi');
-    csx.fillRect(k / (DATA.length - 1) * cs.width, 8, Math.max(1, cs.width / DATA.length), 12);
+    csx.fillRect(k / (DATA.length - 1) * cs.width, clustered[k] ? mid - 9 : mid + 1, bw, 8);
   }
+  csx.strokeStyle = '#8b98a5';
+  csx.beginPath();
+  csx.moveTo(t / (DATA.length - 1) * cs.width, 2);
+  csx.lineTo(t / (DATA.length - 1) * cs.width, cs.height - 10);
+  csx.stroke();
   document.getElementById('clusPct').textContent = (100 * clus / (t + 1)).toFixed(0) + '%';
 }
 
@@ -342,27 +432,31 @@ function hideOverlay() {
   if (introTimer) { clearTimeout(introTimer); introTimer = null; }
 }
 function showIntro() {
-  // Hold on the starting formation so the observer can read the scene, then autoplay.
+  // Hold on the starting formation (labels drawn on the field) so the observer can
+  // decode the scene, then autoplay. First load holds longer; switching formations
+  // holds briefly; clicking the banner starts immediately.
   setPlaying(false);
-  t = 0; draw();
+  t = 0;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const msg = document.getElementById('overlayMsg');
   const name = PATTERNS[runKey] ? PATTERNS[runKey].name : runKey;
-  const ov = document.getElementById('overlay');
-  ov.hidden = false;
+  document.getElementById('overlay').hidden = false;
+  draw();
   if (reduced) {
     msg.innerHTML = 'Starting formation: <b>' + runKey + ' ' + name + '</b>. Press Play to run.';
     return;
   }
-  let s = 5;
+  let s = firstIntro ? 5 : 2;
+  firstIntro = false;
   const tick = () => {
     msg.innerHTML = 'Starting formation: <b>' + runKey + ' ' + name +
-      '</b> &nbsp;-&nbsp; playing in ' + s + 's';
+      '</b> &nbsp;-&nbsp; playing in ' + s + 's &nbsp;<small>(click to start now)</small>';
     if (s-- > 0) { introTimer = setTimeout(tick, 1000); }
     else { hideOverlay(); setPlaying(true); }
   };
   tick();
 }
+document.getElementById('overlay').addEventListener('click', () => setPlaying(true));
 
 function loadRun(key) {
   if (!RUNS[key]) return;
@@ -413,13 +507,35 @@ function buildPatterns() {
   });
 }
 
+// charts are seekable timelines: click or drag to jump
+function makeSeekable(canvas) {
+  let down = false;
+  const seek = e => {
+    const rect = canvas.getBoundingClientRect();
+    const frac = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    t = Math.round(frac * (DATA.length - 1));
+    setPlaying(false); hideOverlay(); draw();
+  };
+  canvas.addEventListener('pointerdown', e => {
+    down = true; seek(e);
+    try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* synthetic pointers */ }
+  });
+  canvas.addEventListener('pointermove', e => { if (down) seek(e); });
+  canvas.addEventListener('pointerup', () => { down = false; });
+}
+makeSeekable(sp);
+makeSeekable(cs);
+
 document.getElementById('play').onclick = () => {
   if (!playing && t >= DATA.length - 1) t = 0;
   setPlaying(!playing);
 };
 document.getElementById('reset').onclick = () => { t = 0; setPlaying(true); draw(); };
 document.getElementById('trails').onclick = e => {
-  trails = !trails; e.target.setAttribute('aria-pressed', trails); draw();
+  trails = !trails;
+  e.target.setAttribute('aria-pressed', trails);
+  e.target.textContent = 'Trails: ' + (trails ? 'on' : 'off');
+  draw();
 };
 document.getElementById('scrub').oninput = e => {
   t = +e.target.value; setPlaying(false); hideOverlay(); draw();
@@ -461,8 +577,6 @@ def main():
     ap.add_argument("--fn", type=float, default=8.944, help="clustering radius fN")
     ap.add_argument("--eq", type=float, default=13.86,
                     help="target standoff radius (repulsion-attraction equilibrium)")
-    ap.add_argument("--box", nargs=4, type=float, default=[15, 2, 15, 15],
-                    help="sheep initialisation box x y w h (mini-map context)")
     ap.add_argument("--subtitle", default="")
     args = ap.parse_args()
 
@@ -489,7 +603,6 @@ def main():
             .replace("__FIELD__", json.dumps(args.field))
             .replace("__EQ__", json.dumps(args.eq))
             .replace("__FN__", json.dumps(args.fn))
-            .replace("__BOX__", json.dumps(args.box))
             .replace("__BCLABELS__", json.dumps(BC_LABELS))
             .replace("__DEFAULT__", json.dumps(default))
             .replace("__TMAX__", str(steps - 1))
