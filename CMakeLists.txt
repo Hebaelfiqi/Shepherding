@@ -99,3 +99,25 @@ add_test(NAME unit_tests COMMAND unit_tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR
 add_test(NAME t0_regression
          COMMAND bash ${CMAKE_SOURCE_DIR}/tests/t0_regression.sh
                  $<TARGET_FILE_DIR:shepherd_sim> ${CMAKE_SOURCE_DIR})
+
+# ----------------------------------------------------------------------------
+# 5) WebAssembly frontend (merged from the web-simulator line). Built only under
+#    Emscripten; the module is the BASE model (links the physics library only,
+#    not the adversarial controller):
+#      source ~/emsdk/emsdk_env.sh
+#      emcmake cmake -S . -B build-wasm -DCMAKE_BUILD_TYPE=Release
+#      cmake --build build-wasm -j
+# ----------------------------------------------------------------------------
+if(EMSCRIPTEN)
+  add_executable(shepherd_web
+    ${SIM}/wasm_bindings.cpp
+    ${SIM}/Sim.cpp
+    ${SIM}/SupportingCalc.cpp
+  )
+  target_include_directories(shepherd_web PRIVATE ${SIM} ${LIBC})
+  target_link_libraries(shepherd_web PRIVATE shepherding)
+  set_target_properties(shepherd_web PROPERTIES
+    OUTPUT_NAME "shepherd_sim_web"
+    SUFFIX ".js"
+    LINK_FLAGS "-sMODULARIZE=1 -sEXPORT_NAME=createShepherdModule -sALLOW_MEMORY_GROWTH=1 -sEXPORTED_RUNTIME_METHODS=cwrap,HEAPF32 -sENVIRONMENT=web,node")
+endif()
