@@ -110,10 +110,20 @@ void writeRecord(std::ofstream& f, const StepRecord& r)
 }
 
 // One adversarial run against an already-initialised Simulation/Environment.
-void runLoop(Simulation* sim, int steps, int runIdx, std::ofstream& perStep, std::vector<StepRecord>& all)
+// positions, when non-null, receives one row per step with the committed agent
+// positions and the chosen BC, for trajectory replay tools.
+void runLoop(Simulation* sim, int steps, int runIdx, std::ofstream& perStep, std::vector<StepRecord>& all,
+	std::ofstream* positions = nullptr)
 {
 	Environment& env = Environment::getInstance();
 	SheepDogAgent* dog = (*env.sheepDogFlock)[0];
+
+	if (positions)
+	{
+		*positions << "t,dogX,dogY,chosenBC";
+		for (int i = 0; i < env.sheepFlock->size(); i++) *positions << ",s" << i << "x,s" << i << "y";
+		*positions << "\n";
+	}
 
 	for (int t = 1; t <= steps; t++)
 	{
@@ -126,6 +136,14 @@ void runLoop(Simulation* sim, int steps, int runIdx, std::ofstream& perStep, std
 		StepRecord r = measureStep(runIdx, t, info.chosenBC);
 		writeRecord(perStep, r);
 		all.push_back(r);
+
+		if (positions)
+		{
+			*positions << t << "," << dog->position_t.x << "," << dog->position_t.y << "," << (info.chosenBC + 1);
+			for (int i = 0; i < env.sheepFlock->size(); i++)
+				*positions << "," << (*env.sheepFlock)[i]->position_t.x << "," << (*env.sheepFlock)[i]->position_t.y;
+			*positions << "\n";
+		}
 	}
 	(void)sim;
 }
@@ -217,12 +235,15 @@ int runAdversarialSingle(const std::string& perStepPath)
 {
 	std::ofstream perStep(perStepPath);
 	writeHeader(perStep);
+	std::string positionsPath = perStepPath.substr(0, perStepPath.rfind('.')) + "_Positions.csv";
+	std::ofstream positions(positionsPath);
 	std::vector<StepRecord> all;
 	Simulation* sim = initRun(randomNumberSeed,
 		sheepInitializationStartingX, sheepInitializationStartingY,
 		sheepInitializationXRange, sheepInitializationYRange, sheepInitializationPattern);
-	runLoop(sim, MaximumNumSteps, 0, perStep, all);
-	printf("Adversarial single run: %d steps logged to %s\n", MaximumNumSteps, perStepPath.c_str());
+	runLoop(sim, MaximumNumSteps, 0, perStep, all, &positions);
+	printf("Adversarial single run: %d steps logged to %s and %s\n",
+		MaximumNumSteps, perStepPath.c_str(), positionsPath.c_str());
 	return 0;
 }
 
