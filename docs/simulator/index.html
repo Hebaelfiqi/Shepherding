@@ -47,8 +47,10 @@
   .field-row { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12.5px; }
   .field-row label { color:var(--muted); }
   .field-row label.sym { font-family:Georgia,"Times New Roman",serif; font-style:italic;
-                         font-size:13.5px; color:var(--ink); cursor:help; }
+                         font-size:13.5px; color:var(--ink); }
   .field-row label.sym sub, .field-row label.sym sup { font-size:9.5px; }
+  .param-cell { border-bottom:1px solid #1e2833; padding-bottom:6px; }
+  .param-desc { font-size:10.5px; color:var(--muted); line-height:1.35; margin-top:2px; }
   .patterns { display:flex; flex-wrap:wrap; gap:7px; margin-top:4px; }
   .pat { flex:1 1 44px; max-width:52px; border:1px solid var(--line); border-radius:4px;
          padding:4px; cursor:pointer; background:#131a23; text-align:center; }
@@ -126,20 +128,22 @@
             <input id="pSeed" type="number" min="0" max="99999" value="0"></div>
           <div class="field-row"><label for="pMax">max steps</label>
             <input id="pMax" type="number" min="100" max="8000" step="100" value="2000"></div>
-          <div class="field-row" title="fraction of the field area covered by obstacles; the paper's second experiment sweeps 0 to 10%">
-            <label for="pObsD">obstacles %</label>
+          <div class="param-cell" title="config: ObstaclesDensity">
+            <div class="field-row"><label for="pObsD">obstacles %</label>
             <input id="pObsD" type="number" min="0" max="10" step="0.2" value="0"></div>
-          <div class="field-row" title="radius of each circular obstacle (paper: 1 unit)">
-            <label for="pObsR">obstacle radius</label>
+            <div class="param-desc">total obstacle area per field area; Exp. 2 of the paper sweeps 0 to 10% in 0.2% steps</div></div>
+          <div class="param-cell" title="config: ObstaclesRadius">
+            <div class="field-row"><label for="pObsR">obstacle radius</label>
             <input id="pObsR" type="number" min="0.5" max="3" step="0.5" value="1"></div>
+            <div class="param-desc">radius of each circular obstacle (paper: 1 unit)</div></div>
         </div>
         <div class="field-row" style="margin-top:8px"><label>sheep starting formation</label></div>
         <div class="patterns" id="patterns"></div>
         <details>
           <summary>parameters (Table 2 of the paper)</summary>
           <div class="grid2" id="paramGrid"></div>
-          <p class="note">Symbols and defaults follow Table 2 of the paper (hover a symbol
-          for its description and config name). The sheepdog sensing range
+          <p class="note">Symbols, descriptions and defaults follow Table 2 of the paper
+          (hover a field for its config-file name). The sheepdog sensing range
           R<sub>&beta;&pi;</sub> defaults to 65 (unlimited in practice), matching the
           paper-era model. Two obstacle constants are fixed inside the library and not
           configurable: W<sub>&pi;o</sub> = 3 (repulsion from obstacles) and
@@ -254,12 +258,14 @@ function buildPatternCards() {
 function buildParamGrid() {
   const host = $('paramGrid');
   for (const [name, def, sym, desc] of PARAM_DEFS) {
-    const row = document.createElement('div');
-    row.className = 'field-row';
-    row.title = desc + '  [config: ' + name + ']';
-    row.innerHTML = `<label class="sym" for="pp_${name}">${sym}</label>` +
-      `<input id="pp_${name}" type="number" step="any" value="${def}" aria-label="${name}">`;
-    host.appendChild(row);
+    const cell = document.createElement('div');
+    cell.className = 'param-cell';
+    cell.title = 'config: ' + name;
+    cell.innerHTML =
+      `<div class="field-row"><label class="sym" for="pp_${name}">${sym}</label>` +
+      `<input id="pp_${name}" type="number" step="any" value="${def}" aria-label="${name}"></div>` +
+      `<div class="param-desc">${desc}</div>`;
+    host.appendChild(cell);
   }
 }
 const P = name => parseFloat($('pp_' + name).value);
