@@ -54,7 +54,9 @@ function create(mod, p) {
      p.drivingPositionEq, p.collectingPositionEq, p.sheepNeighborhoodSelection,
      p.modulationDecayFactor,
      p.sheepX, p.sheepY, p.sheepW, p.sheepH, p.patternId,
-     p.dogX, p.dogY, p.dogW, p.dogH, p.maximumSteps);
+     p.dogX, p.dogY, p.dogW, p.dogH,
+     0.0, 1.0, /* no obstacles in the Fig. 5 battery */
+     p.maximumSteps);
 }
 
 function runOne(mod, model, seed, pattern) {

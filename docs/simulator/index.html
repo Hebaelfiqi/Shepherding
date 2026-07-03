@@ -46,6 +46,9 @@
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; }
   .field-row { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12.5px; }
   .field-row label { color:var(--muted); }
+  .field-row label.sym { font-family:Georgia,"Times New Roman",serif; font-style:italic;
+                         font-size:13.5px; color:var(--ink); cursor:help; }
+  .field-row label.sym sub, .field-row label.sym sup { font-size:9.5px; }
   .patterns { display:flex; flex-wrap:wrap; gap:7px; margin-top:4px; }
   .pat { flex:1 1 44px; max-width:52px; border:1px solid var(--line); border-radius:4px;
          padding:4px; cursor:pointer; background:#131a23; text-align:center; }
@@ -123,16 +126,24 @@
             <input id="pSeed" type="number" min="0" max="99999" value="0"></div>
           <div class="field-row"><label for="pMax">max steps</label>
             <input id="pMax" type="number" min="100" max="8000" step="100" value="2000"></div>
+          <div class="field-row" title="fraction of the field area covered by obstacles; the paper's second experiment sweeps 0 to 10%">
+            <label for="pObsD">obstacles %</label>
+            <input id="pObsD" type="number" min="0" max="10" step="0.2" value="0"></div>
+          <div class="field-row" title="radius of each circular obstacle (paper: 1 unit)">
+            <label for="pObsR">obstacle radius</label>
+            <input id="pObsR" type="number" min="0.5" max="3" step="0.5" value="1"></div>
         </div>
         <div class="field-row" style="margin-top:8px"><label>sheep starting formation</label></div>
         <div class="patterns" id="patterns"></div>
         <details>
           <summary>parameters (Table 2 of the paper)</summary>
           <div class="grid2" id="paramGrid"></div>
-          <p class="note">Defaults are Table 2 of the paper. The sheepdog sensing range
-          R_beta_pi defaults to 65 (unlimited in practice), matching the paper-era model;
-          the limited-sensing extension added to the library later can be explored by
-          lowering it.</p>
+          <p class="note">Symbols and defaults follow Table 2 of the paper (hover a symbol
+          for its description and config name). The sheepdog sensing range
+          R<sub>&beta;&pi;</sub> defaults to 65 (unlimited in practice), matching the
+          paper-era model. Two obstacle constants are fixed inside the library and not
+          configurable: W<sub>&pi;o</sub> = 3 (repulsion from obstacles) and
+          R<sup>a</sup><sub>&pi;o</sub> = 5 (obstacle avoidance range).</p>
         </details>
       </div>
       <div class="card">
@@ -155,6 +166,7 @@
           <span><i class="dot" style="background:var(--sheep)"></i>sheep (swarm being herded)</span>
           <span><i class="dot" style="background:var(--dog)"></i>sheepdog</span>
           <span><i class="dot" style="background:var(--goal)"></i>goal region (radius from config)</span>
+          <span><i class="dot" style="background:#38434f"></i>obstacle (sheep repulse; the sky shepherd does not)</span>
         </div>
         <p class="note">Same physics as the Visual Studio / SDL2 build: the library is compiled
         to WebAssembly, not reimplemented. Trajectories differ from a native run with the same
@@ -171,22 +183,34 @@ const PATTERNS = {
   3:{cells:[1,3,10,12,14], name:"P3"}, 4:{cells:[0,4,10,14,22], name:"P4"},
   5:{cells:[2,10,14,20,24], name:"P5"}, 6:{cells:[0,4,20,24], name:"P6"},
 };
-// Table 2 of the paper == InputFiles/Config.xml, exposed as editable advanced parameters.
+// Table 2 of the paper == InputFiles/Config.xml, exposed with the paper's notation:
+// [config name, default, symbol (HTML), Table 2 description]. Sheep are pi, the
+// sheepdog is beta, Lambda is the local centre of mass.
 const PARAM_DEFS = [
-  ["R_pi_beta", 65, "sheep sense dog"], ["Ra_pi_pi", 0.4, "sheep avoidance"],
-  ["Rs_pi_pi", 3, "sheep cohesion range"], ["R_beta_beta", 2, "dog-dog range"],
-  ["R_beta_pi", 65, "dog senses sheep"],
-  ["W_pi_pi", 2, "repulse sheep"], ["W_pi_beta", 1, "flee dog"],
-  ["W_pi_Lambda", 1.05, "cohesion"], ["W_pi_upsilon", 0.5, "inertia"],
-  ["W_e_pi_i", 0.3, "sheep jitter"], ["W_e_beta_j", 0.3, "dog jitter"],
-  ["W_beta_beta", 0.5, "dog-dog repulse"],
-  ["S_t_beta_j", 2.0, "dog speed"], ["eta", 0.05, "graze prob"],
-  ["R2", 4, "min dog gap"], ["R3", 10, "influence length"],
-  ["ModulationDecayFactor", 2, "decay"], ["GoalRadius", 10, "goal radius"],
+  ["R_pi_beta", 65, "R<sub>&pi;&beta;</sub>", "pi sensing range for beta"],
+  ["Ra_pi_pi", 0.4, "R<sup>a</sup><sub>&pi;&pi;</sub>", "pi avoidance range for pi"],
+  ["Rs_pi_pi", 3, "R<sup>s</sup><sub>&pi;&pi;</sub>", "pi sensing range for pi"],
+  ["R_beta_beta", 2, "R<sub>&beta;&beta;</sub>", "beta avoidance range for beta"],
+  ["R_beta_pi", 65, "R<sub>&beta;&pi;</sub>", "beta sensing range for pi (post-paper library addition; 65 = paper-era unlimited)"],
+  ["W_pi_pi", 2, "W<sub>&pi;&pi;</sub>", "pi repulsion strength from pi"],
+  ["W_pi_beta", 1, "W<sub>&pi;&beta;</sub>", "pi repulsion strength from beta"],
+  ["W_pi_Lambda", 1.05, "W<sub>&pi;&Lambda;</sub>", "pi attraction strength to Lambda"],
+  ["W_pi_upsilon", 0.5, "W<sub>&pi;&upsilon;</sub>", "strength of pi previous direction"],
+  ["W_e_pi_i", 0.3, "W<sub>&epsilon;&pi;</sub>", "strength of sheep pi angular noise"],
+  ["W_e_beta_j", 0.3, "W<sub>&epsilon;&beta;</sub>", "strength of shepherd beta angular noise"],
+  ["W_beta_beta", 0.5, "W<sub>&beta;&beta;</sub>", "beta repulsion strength from beta"],
+  ["S_t_beta_j", 2.0, "S<sub>&beta;</sub>", "maximum speed of beta per time step"],
+  ["eta", 0.05, "&eta;", "probability of moving per time step while grazing"],
+  ["R2", 4, "R2", "minimum separation distance between a sheepdog and a sheep"],
+  ["R3", 10, "R3", "length of the influencing distance for the sheepdog"],
+  ["ModulationDecayFactor", 2, "decay", "force regulation decay (exponent constant of M1)"],
+  ["GoalRadius", 10, "goal r", "goal region radius"],
+  ["StallingDistance", 1.2, "3R<sup>a</sup><sub>&pi;&pi;</sub>", "Stroembom stalling distance; paper text implies 3Ra = 1.2, shipped Config.xml uses 6 (pending confirmation)"],
 ];
 const FIELD = 50, GOAL = [25, 50];
 let mod = null, running = false, finished = false, model = "proposed";
 let trails = true, history = [], nDogs = 1, nSheep = 100, goalRadius = 10;
+let obstacles = [];   // [x, y, radius] for the current run
 
 const cv = document.getElementById('field'), cx = cv.getContext('2d');
 const ch = document.getElementById('chart'), chx = ch.getContext('2d');
@@ -229,11 +253,12 @@ function buildPatternCards() {
 
 function buildParamGrid() {
   const host = $('paramGrid');
-  for (const [name, def] of PARAM_DEFS) {
+  for (const [name, def, sym, desc] of PARAM_DEFS) {
     const row = document.createElement('div');
     row.className = 'field-row';
-    row.innerHTML = `<label for="pp_${name}">${name}</label>` +
-      `<input id="pp_${name}" type="number" step="any" value="${def}">`;
+    row.title = desc + '  [config: ' + name + ']';
+    row.innerHTML = `<label class="sym" for="pp_${name}">${sym}</label>` +
+      `<input id="pp_${name}" type="number" step="any" value="${def}" aria-label="${name}">`;
     host.appendChild(row);
   }
 }
@@ -263,13 +288,21 @@ function createSim() {
     P('S_t_beta_j'), P('eta'),
     strombom ? Math.round(0.5 * nSheep) : nSheep - 1, nSheep,
     GOAL[0], GOAL[1], goalRadius,
-    strombom ? 0 : 1, strombom ? 1 : 0, 3 * P('Ra_pi_pi'),
+    strombom ? 0 : 1, strombom ? 1 : 0, P('StallingDistance'),
     P('R2'), P('R3'), strombom ? 0 : 1, strombom ? 0 : 1,
     strombom ? 0 : 1, strombom ? 0 : 1, strombom ? 0 : 1,
     P('ModulationDecayFactor'),
     20, 20, 10, 10, pattern,
     15, 45, 20, 5,
+    parseFloat($('pObsD').value) / 100, parseFloat($('pObsR').value),
     parseInt($('pMax').value));
+  obstacles = [];
+  const nObs = mod._sim_num_obstacles();
+  if (nObs > 0) {
+    const optr = mod._sim_obstacles() >> 2;
+    for (let i = 0; i < nObs; i++)
+      obstacles.push([mod.HEAPF32[optr + 3 * i], mod.HEAPF32[optr + 3 * i + 1], mod.HEAPF32[optr + 3 * i + 2]]);
+  }
   history = [];
   finished = false;
   $('banner').hidden = true;
@@ -310,6 +343,13 @@ function draw() {
   for (let g = 10; g < FIELD; g += 10) {
     cx.beginPath(); cx.moveTo(X(g), 0); cx.lineTo(X(g), cv.height); cx.stroke();
     cx.beginPath(); cx.moveTo(0, Y(g)); cx.lineTo(cv.width, Y(g)); cx.stroke();
+  }
+  // obstacles (static for the run)
+  for (const [ox, oy, orad] of obstacles) {
+    cx.fillStyle = '#38434f';
+    cx.beginPath(); cx.arc(X(ox), Y(oy), orad * S, 0, 7); cx.fill();
+    cx.strokeStyle = '#4d5a68';
+    cx.beginPath(); cx.arc(X(ox), Y(oy), orad * S, 0, 7); cx.stroke();
   }
   // goal region
   cx.setLineDash([6, 5]); cx.strokeStyle = css('--goal'); cx.lineWidth = 1.4;
@@ -441,7 +481,7 @@ function markDirty() {
   if (running) { $('run').hidden = false; $('pause').hidden = true; running = false; }
 }
 function armDirtyTracking() {
-  document.querySelectorAll('#paramGrid input, #pN, #pM, #pSeed, #pMax')
+  document.querySelectorAll('#paramGrid input, #pN, #pM, #pSeed, #pMax, #pObsD, #pObsR')
     .forEach(el => el.addEventListener('change', markDirty));
 }
 

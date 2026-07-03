@@ -84,6 +84,7 @@ void sim_create(
 	int modulationDecayFactor,
 	int sheepX, int sheepY, int sheepW, int sheepH, int patternId,
 	int dogX, int dogY, int dogW, int dogH,
+	float obstaclesDensity, float obstaclesRadius,
 	int maximumSteps)
 {
 	Environment& env = Environment::getInstance();
@@ -96,6 +97,13 @@ void sim_create(
 	env.sheepdogsSharedDrivingKnowledge.clear();
 	env.coveringPoints.clear();
 	env.openCoveringTask = false;
+	if (env.terrain.staticObstacles)
+	{
+		for (int i = 0; i < env.terrain.staticObstacles->size(); i++)
+			delete (*env.terrain.staticObstacles)[i];
+		delete env.terrain.staticObstacles;
+		env.terrain.staticObstacles = nullptr;
+	}
 	delete sim;
 
 	maxSteps = maximumSteps;
@@ -111,7 +119,7 @@ void sim_create(
 		modulationDecayFactor,
 		sheepX, sheepY, sheepW, sheepH, "P" + std::to_string(patternId),
 		dogX, dogY, dogW, dogH,
-		0.0f /*no obstacles in the IEEE Access single-dog design*/, 1.0f);
+		obstaclesDensity, obstaclesRadius);
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -126,6 +134,29 @@ int sim_step()
 
 EMSCRIPTEN_KEEPALIVE int sim_time() { return sim ? sim->timestep : 0; }
 EMSCRIPTEN_KEEPALIVE int sim_goal_found() { return (sim && sim->goalFound) ? 1 : 0; }
+
+EMSCRIPTEN_KEEPALIVE int sim_num_obstacles()
+{
+	Environment& env = Environment::getInstance();
+	return env.terrain.staticObstacles ? (int)env.terrain.staticObstacles->size() : 0;
+}
+
+// Static obstacle layout for the current run: [x, y, radius] per obstacle.
+static std::vector<float> obsBuf;
+EMSCRIPTEN_KEEPALIVE
+float* sim_obstacles()
+{
+	Environment& env = Environment::getInstance();
+	obsBuf.clear();
+	if (env.terrain.staticObstacles)
+		for (int i = 0; i < env.terrain.staticObstacles->size(); i++)
+		{
+			obsBuf.push_back((*env.terrain.staticObstacles)[i]->position_t.x);
+			obsBuf.push_back((*env.terrain.staticObstacles)[i]->position_t.y);
+			obsBuf.push_back((*env.terrain.staticObstacles)[i]->radius);
+		}
+	return obsBuf.data();
+}
 
 EMSCRIPTEN_KEEPALIVE int sim_num_dogs()
 {
